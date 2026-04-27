@@ -25,6 +25,10 @@ public class SupplyLab {
         }
     }
 
+    public void addSupply(SupplyItem s) {
+        mItems.add(s);
+    }
+
     public List<SupplyItem> getItems() { return mItems; }
 
     public SupplyItem getItem(UUID id) {

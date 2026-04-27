@@ -7,4 +7,5 @@
 
     <string name="mark_as_available">Mark as Available</string>
     <string name="mark_as_borrowed">Mark as Borrowed</string>
+    <string name="subtitle_format">%1$d items</string>
 </resources>

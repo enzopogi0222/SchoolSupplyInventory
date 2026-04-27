@@ -3,10 +3,14 @@ package com.example.schoolsupplyinventory;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -16,6 +20,12 @@ public class SupplyListFragment extends Fragment {
 
     private RecyclerView mSupplyRecyclerView;
     private SupplyAdapter mAdapter;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -34,6 +44,39 @@ public class SupplyListFragment extends Fragment {
     public void onResume() {
         super.onResume();
         updateUI();
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_supply_list, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.new_supply) {
+            SupplyItem item_new = new SupplyItem();
+            SupplyLab.get(getActivity()).addSupply(item_new);
+
+            Intent intent = SupplyPagerActivity.newIntent(getActivity(), item_new.getId());
+            startActivity(intent);
+            return true;
+        } else if (itemId == R.id.show_subtitle) {
+            updateSubtitle();
+            return true;
+        } else {
+            return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void updateSubtitle() {
+        SupplyLab supplyLab = SupplyLab.get(getActivity());
+        int count = supplyLab.getItems().size();
+        String subtitle = getString(R.string.subtitle_format, count);
+
+        AppCompatActivity activity = (AppCompatActivity) getActivity();
+        activity.getSupportActionBar().setSubtitle(subtitle);
     }
 
     private void updateUI() {
