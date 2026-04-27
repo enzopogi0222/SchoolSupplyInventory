@@ -37,6 +37,17 @@ public class SupplyLab {
         mDatabase.insert(SupplyTable.NAME, null, values);
     }
 
+    public void deleteSupply(SupplyItem s) {
+        String uuidString = s.getId().toString();
+        mDatabase.delete(SupplyTable.NAME, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
+        
+        // Also delete the photo if it exists
+        File photoFile = getPhotoFile(s);
+        if (photoFile.exists()) {
+            photoFile.delete();
+        }
+    }
+
     public List<SupplyItem> getItems() {
         List<SupplyItem> items = new ArrayList<>();
         SupplyCursorWrapper cursor = querySupplies(null, null);

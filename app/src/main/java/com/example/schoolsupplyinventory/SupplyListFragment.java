@@ -1,5 +1,6 @@
 package com.example.schoolsupplyinventory;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -10,8 +11,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
@@ -35,9 +38,51 @@ public class SupplyListFragment extends Fragment {
         mSupplyRecyclerView = (RecyclerView) view.findViewById(R.id.inventory_recycler_view);
         mSupplyRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
+        setupItemTouchHelper();
         updateUI();
 
         return view;
+    }
+
+    private void setupItemTouchHelper() {
+        ItemTouchHelper.SimpleCallback itemTouchHelperCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                final int position = viewHolder.getAdapterPosition();
+                final SupplyItem itemToDelete = mAdapter.mItems.get(position);
+
+                new AlertDialog.Builder(getActivity())
+                        .setTitle("Delete Item")
+                        .setMessage("Are you sure you want to delete this item?")
+                        .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                SupplyLab.get(getActivity()).deleteSupply(itemToDelete);
+                                updateUI();
+                            }
+                        })
+                        .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                mAdapter.notifyItemChanged(position);
+                            }
+                        })
+                        .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                            @Override
+                            public void onCancel(DialogInterface dialog) {
+                                mAdapter.notifyItemChanged(position);
+                            }
+                        })
+                        .show();
+            }
+        };
+
+        new ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(mSupplyRecyclerView);
     }
 
     @Override
@@ -110,7 +155,7 @@ public class SupplyListFragment extends Fragment {
 
         public void bind(SupplyItem item) {
             mItem = item;
-            mTitleTextView.setText(mItem.getName());
+            mTitleTextView.setText(mItem.getName() != null ? mItem.getName() : "Unnamed Item");
             mBrandTextView.setText("Brand: " + (mItem.getBrand() != null ? mItem.getBrand() : "N/A"));
             mCategoryTextView.setText("Category: " + mItem.getCategory().name());
             mStatusTextView.setText(mItem.isBorrowed() ? "Borrowed" : "Available");
