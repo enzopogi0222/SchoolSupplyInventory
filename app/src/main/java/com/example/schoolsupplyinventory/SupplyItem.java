@@ -1,21 +1,31 @@
 package com.example.schoolsupplyinventory;
 
+import java.util.Date;
 import java.util.UUID;
 
 public class SupplyItem {
 
     private UUID mId;
     private String mName;
-    private boolean mIsAvailable;
+    private Date mDate;
+    private boolean mBorrowed;
+    private Category mCategory;
+    private String mBrand;
 
     public SupplyItem() {
-        mId = UUID.randomUUID();
+        this(UUID.randomUUID());
     }
 
-    public SupplyItem(String name, boolean isAvailable) {
+    public SupplyItem(UUID id) {
+        mId = id;
+        mDate = new Date();
+        mCategory = Category.OTHER;
+    }
+
+    public SupplyItem(String name, boolean isBorrowed) {
         this();
         mName = name;
-        mIsAvailable = isAvailable;
+        mBorrowed = isBorrowed;
     }
 
     public UUID getId() {
@@ -30,11 +40,35 @@ public class SupplyItem {
         mName = name;
     }
 
-    public boolean isAvailable() {
-        return mIsAvailable;
+    public Date getDate() {
+        return mDate;
     }
 
-    public void setAvailable(boolean available) {
-        mIsAvailable = available;
+    public void setDate(Date date) {
+        mDate = date;
+    }
+
+    public boolean isBorrowed() {
+        return mBorrowed;
+    }
+
+    public void setBorrowed(boolean borrowed) {
+        mBorrowed = borrowed;
+    }
+
+    public Category getCategory() {
+        return mCategory;
+    }
+
+    public void setCategory(Category category) {
+        mCategory = category;
+    }
+
+    public String getBrand() {
+        return mBrand;
+    }
+
+    public void setBrand(String brand) {
+        mBrand = brand;
     }
 }

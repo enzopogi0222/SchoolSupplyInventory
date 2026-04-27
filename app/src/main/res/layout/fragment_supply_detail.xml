@@ -19,6 +19,29 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:text="Brand"
+        style="?android:listSeparatorTextViewStyle" />
+
+    <EditText
+        android:id="@+id/supply_brand"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Enter brand" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Category"
+        style="?android:listSeparatorTextViewStyle" />
+
+    <Spinner
+        android:id="@+id/supply_category"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:text="Details"
         style="?android:listSeparatorTextViewStyle" />
 
@@ -28,9 +51,9 @@
         android:layout_height="wrap_content" />
 
     <CheckBox
-        android:id="@+id/supply_available"
+        android:id="@+id/supply_borrowed"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Available" />
+        android:text="Borrowed" />
 
 </LinearLayout>

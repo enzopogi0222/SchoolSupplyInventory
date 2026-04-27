@@ -87,12 +87,15 @@ public class SupplyListFragment extends Fragment {
             mAdapter = new SupplyAdapter(items);
             mSupplyRecyclerView.setAdapter(mAdapter);
         } else {
+            mAdapter.setItems(items);
             mAdapter.notifyDataSetChanged();
         }
     }
 
     private class SupplyHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
         private TextView mTitleTextView;
+        private TextView mBrandTextView;
+        private TextView mCategoryTextView;
         private TextView mStatusTextView;
         private SupplyItem mItem;
 
@@ -100,13 +103,17 @@ public class SupplyListFragment extends Fragment {
             super(inflater.inflate(R.layout.list_item_supply, parent, false));
             itemView.setOnClickListener(this);
             mTitleTextView = (TextView) itemView.findViewById(R.id.item_title);
+            mBrandTextView = (TextView) itemView.findViewById(R.id.item_brand);
+            mCategoryTextView = (TextView) itemView.findViewById(R.id.item_category);
             mStatusTextView = (TextView) itemView.findViewById(R.id.item_status);
         }
 
         public void bind(SupplyItem item) {
             mItem = item;
             mTitleTextView.setText(mItem.getName());
-            mStatusTextView.setText(mItem.isAvailable() ? "Available" : "Borrowed");
+            mBrandTextView.setText("Brand: " + (mItem.getBrand() != null ? mItem.getBrand() : "N/A"));
+            mCategoryTextView.setText("Category: " + mItem.getCategory().name());
+            mStatusTextView.setText(mItem.isBorrowed() ? "Borrowed" : "Available");
         }
 
         @Override
@@ -139,6 +146,10 @@ public class SupplyListFragment extends Fragment {
         @Override
         public int getItemCount() {
             return mItems.size();
+        }
+
+        public void setItems(List<SupplyItem> items) {
+            mItems = items;
         }
     }
 }
