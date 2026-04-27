@@ -10,6 +10,7 @@ import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -97,6 +98,15 @@ public class SupplyLab {
         } finally {
             cursor.close();
         }
+    }
+
+    public File getPhotoFile(SupplyItem item) {
+        File filesDir = mContext.getFilesDir();
+        File photoDir = new File(filesDir, "images");
+        if (!photoDir.exists()) {
+            photoDir.mkdirs();
+        }
+        return new File(photoDir, item.getPhotoFilename());
     }
 
     private SupplyCursorWrapper querySupplies(String whereClause, String[] whereArgs) {

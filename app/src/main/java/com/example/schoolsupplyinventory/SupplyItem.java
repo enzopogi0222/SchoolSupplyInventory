@@ -12,6 +12,7 @@ public class SupplyItem {
     private Category mCategory;
     private String mBrand;
     private String mBorrower;
+    private String mPhotoFilename;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -79,5 +80,9 @@ public class SupplyItem {
 
     public void setBorrower(String borrower) {
         mBorrower = borrower;
+    }
+
+    public String getPhotoFilename() {
+        return "IMG_" + getId().toString() + ".jpg";
     }
 }
