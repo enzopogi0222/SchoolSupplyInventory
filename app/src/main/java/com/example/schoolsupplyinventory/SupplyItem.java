@@ -11,6 +11,7 @@ public class SupplyItem {
     private boolean mBorrowed;
     private Category mCategory;
     private String mBrand;
+    private String mBorrower;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -70,5 +71,13 @@ public class SupplyItem {
 
     public void setBrand(String brand) {
         mBrand = brand;
+    }
+
+    public String getBorrower() {
+        return mBorrower;
+    }
+
+    public void setBorrower(String borrower) {
+        mBorrower = borrower;
     }
 }

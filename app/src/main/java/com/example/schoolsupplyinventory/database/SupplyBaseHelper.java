@@ -5,9 +5,10 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 3;
+    private static final int VERSION = 5;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -23,7 +24,15 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.DATE + ", " +
                 SupplyTable.Cols.BORROWED + ", " +
                 SupplyTable.Cols.CATEGORY + ", " +
-                SupplyTable.Cols.BRAND + ")"
+                SupplyTable.Cols.BRAND + ", " +
+                SupplyTable.Cols.BORROWER + ")"
+        );
+
+        db.execSQL("create table " + UserTable.NAME + "(" +
+                " _id integer primary key autoincrement, " +
+                UserTable.Cols.UUID + ", " +
+                UserTable.Cols.NAME + ", " +
+                UserTable.Cols.BARCODE + ")"
         );
     }
 
@@ -34,6 +43,17 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 3) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.BRAND);
+        }
+        if (oldVersion < 4) {
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.BORROWER);
+        }
+        if (oldVersion < 5) {
+            db.execSQL("create table " + UserTable.NAME + "(" +
+                    " _id integer primary key autoincrement, " +
+                    UserTable.Cols.UUID + ", " +
+                    UserTable.Cols.NAME + ", " +
+                    UserTable.Cols.BARCODE + ")"
+            );
         }
     }
 }

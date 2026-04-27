@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase;
 import com.example.schoolsupplyinventory.database.SupplyBaseHelper;
 import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -78,6 +79,26 @@ public class SupplyLab {
                 new String[]{uuidString});
     }
 
+    public String findNameByBarcode(String barcode) {
+        Cursor cursor = mDatabase.query(
+                UserTable.NAME,
+                null,
+                UserTable.Cols.BARCODE + " = ?",
+                new String[] { barcode },
+                null, null, null
+        );
+
+        try {
+            if (cursor.getCount() == 0) {
+                return null;
+            }
+            cursor.moveToFirst();
+            return cursor.getString(cursor.getColumnIndex(UserTable.Cols.NAME));
+        } finally {
+            cursor.close();
+        }
+    }
+
     private SupplyCursorWrapper querySupplies(String whereClause, String[] whereArgs) {
         Cursor cursor = mDatabase.query(
                 SupplyTable.NAME,
@@ -100,6 +121,7 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.BORROWED, item.isBorrowed() ? 1 : 0);
         values.put(SupplyTable.Cols.CATEGORY, item.getCategory() != null ? item.getCategory().name() : null);
         values.put(SupplyTable.Cols.BRAND, item.getBrand());
+        values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
         return values;
     }
 }

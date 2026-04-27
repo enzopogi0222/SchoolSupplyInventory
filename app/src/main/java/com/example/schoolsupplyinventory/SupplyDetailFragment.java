@@ -1,5 +1,7 @@
 package com.example.schoolsupplyinventory;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -13,12 +15,16 @@ import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.fragment.app.Fragment;
 import java.util.UUID;
 
 public class SupplyDetailFragment extends Fragment {
 
     private static final String ARG_ITEM_ID = "item_id";
+    private static final int REQUEST_ID_SCAN = 2;
 
     private SupplyItem mItem;
     private EditText mTitleField;
@@ -26,6 +32,9 @@ public class SupplyDetailFragment extends Fragment {
     private Spinner mCategorySpinner;
     private Button mDateButton;
     private CheckBox mBorrowedCheckBox;
+    private TextView mBorrowerDisplayTextView;
+    private Button mScanIdButton;
+    private Button mReportButton;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -111,6 +120,73 @@ public class SupplyDetailFragment extends Fragment {
             }
         });
 
+        mBorrowerDisplayTextView = (TextView) v.findViewById(R.id.supply_borrower_display);
+        updateBorrowerDisplay();
+
+        mScanIdButton = (Button) v.findViewById(R.id.supply_scan_id);
+        mScanIdButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(getActivity(), ScannerActivity.class);
+                startActivityForResult(intent, REQUEST_ID_SCAN);
+            }
+        });
+
+        mReportButton = (Button) v.findViewById(R.id.supply_report);
+        mReportButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                Intent i = new Intent(Intent.ACTION_SEND);
+                i.setType("text/plain");
+                i.putExtra(Intent.EXTRA_TEXT, getSupplyReport());
+                i.putExtra(Intent.EXTRA_SUBJECT, "School Supply Status Report");
+                i = Intent.createChooser(i, "Send report via:");
+                startActivity(i);
+            }
+        });
+
         return v;
+    }
+
+    private void updateBorrowerDisplay() {
+        if (mItem.getBorrower() != null) {
+            mBorrowerDisplayTextView.setText(mItem.getBorrower());
+        } else {
+            mBorrowerDisplayTextView.setText("None");
+        }
+    }
+
+    private String getSupplyReport() {
+        String borrowedString = null;
+        if (mItem.isBorrowed()) {
+            borrowedString = "Status: Borrowed by " + mItem.getBorrower();
+        } else {
+            borrowedString = "Status: In Stock";
+        }
+
+        String report = "Item: " + mItem.getName() + " (Brand: " + mItem.getBrand() + ")\n" +
+                borrowedString;
+
+        return report;
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode != Activity.RESULT_OK) {
+            return;
+        }
+
+        if (requestCode == REQUEST_ID_SCAN && data != null) {
+            String scannedId = data.getStringExtra("SCANNED_BARCODE");
+            String name = SupplyLab.get(getActivity()).findNameByBarcode(scannedId);
+            
+            if (name != null) {
+                mItem.setBorrower(name);
+                Toast.makeText(getActivity(), "Found user: " + name, Toast.LENGTH_SHORT).show();
+            } else {
+                mItem.setBorrower("ID: " + scannedId);
+                Toast.makeText(getActivity(), "ID scanned: " + scannedId, Toast.LENGTH_SHORT).show();
+            }
+            updateBorrowerDisplay();
+        }
     }
 }
