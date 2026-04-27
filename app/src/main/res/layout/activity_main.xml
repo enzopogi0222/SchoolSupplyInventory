@@ -10,6 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:padding="24dp"
+        android:textSize="24sp"
         android:text="@string/supply_item_name"/>
 
     <LinearLayout
@@ -17,14 +18,12 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
-        //Available button
         <Button
             android:id="@+id/available_button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/available_text"/>
 
-        //Borrowed button
         <Button
             android:id="@+id/borrowed_button"
             android:layout_width="wrap_content"
@@ -33,10 +32,11 @@
 
     </LinearLayout>
 
-
-
-
-
-
+    <Button
+        android:id="@+id/detail_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="View Details" />
 
 </LinearLayout>
