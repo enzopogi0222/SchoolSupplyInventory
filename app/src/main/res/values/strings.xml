@@ -1,3 +1,10 @@
 <resources>
     <string name="app_name">SchoolSupplyInventory</string>
+
+    <string name="supply_item_name">Supply Item Name</string>
+    <string name="available_text">Available</string>
+    <string name="borrowed_text">Borrowed</string>
+
+    <string name="mark_as_available">Mark as Available</string>
+    <string name="mark_as_borrowed">Mark as Borrowed</string>
 </resources>
