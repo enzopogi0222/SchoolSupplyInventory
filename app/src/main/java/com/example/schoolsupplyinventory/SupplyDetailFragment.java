@@ -124,6 +124,10 @@ public class SupplyDetailFragment extends Fragment {
         mRoomButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (mItem.getBorrower() == null) {
+                    Toast.makeText(getActivity(), "Please scan borrower ID first", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 Intent intent = RoomPickerActivity.newIntent(getActivity());
                 startActivityForResult(intent, REQUEST_ROOM);
             }
