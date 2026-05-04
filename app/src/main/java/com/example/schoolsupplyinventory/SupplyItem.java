@@ -20,7 +20,7 @@ public class SupplyItem {
     public SupplyItem(UUID id) {
         mId = id;
         mDate = new Date();
-        mCategory = Category.OTHER;
+        mCategory = Category.STATIONERY;
     }
 
     public SupplyItem(String name, boolean isBorrowed) {

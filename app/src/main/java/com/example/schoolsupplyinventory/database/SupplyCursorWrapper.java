@@ -2,6 +2,7 @@ package com.example.schoolsupplyinventory.database;
 
 import android.database.Cursor;
 import android.database.CursorWrapper;
+import android.util.Log;
 
 import com.example.schoolsupplyinventory.Category;
 import com.example.schoolsupplyinventory.SupplyItem;
@@ -11,6 +12,8 @@ import java.util.Date;
 import java.util.UUID;
 
 public class SupplyCursorWrapper extends CursorWrapper {
+    private static final String TAG = "SupplyCursorWrapper";
+
     public SupplyCursorWrapper(Cursor cursor) {
         super(cursor);
     }
@@ -32,7 +35,12 @@ public class SupplyCursorWrapper extends CursorWrapper {
         item.setBorrower(borrower);
         
         if (categoryName != null) {
-            item.setCategory(Category.valueOf(categoryName));
+            try {
+                item.setCategory(Category.valueOf(categoryName));
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Unknown category: " + categoryName + ", defaulting to STATIONERY");
+                item.setCategory(Category.STATIONERY);
+            }
         }
 
         return item;

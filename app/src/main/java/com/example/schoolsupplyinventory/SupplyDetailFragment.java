@@ -34,7 +34,6 @@ public class SupplyDetailFragment extends Fragment {
     private CheckBox mBorrowedCheckBox;
     private TextView mBorrowerDisplayTextView;
     private Button mScanIdButton;
-    private Button mReportButton;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -132,18 +131,6 @@ public class SupplyDetailFragment extends Fragment {
             }
         });
 
-        mReportButton = (Button) v.findViewById(R.id.supply_report);
-        mReportButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                Intent i = new Intent(Intent.ACTION_SEND);
-                i.setType("text/plain");
-                i.putExtra(Intent.EXTRA_TEXT, getSupplyReport());
-                i.putExtra(Intent.EXTRA_SUBJECT, "School Supply Status Report");
-                i = Intent.createChooser(i, "Send report via:");
-                startActivity(i);
-            }
-        });
-
         return v;
     }
 
@@ -153,20 +140,6 @@ public class SupplyDetailFragment extends Fragment {
         } else {
             mBorrowerDisplayTextView.setText("None");
         }
-    }
-
-    private String getSupplyReport() {
-        String borrowedString = null;
-        if (mItem.isBorrowed()) {
-            borrowedString = "Status: Borrowed by " + mItem.getBorrower();
-        } else {
-            borrowedString = "Status: In Stock";
-        }
-
-        String report = "Item: " + mItem.getName() + " (Brand: " + mItem.getBrand() + ")\n" +
-                borrowedString;
-
-        return report;
     }
 
     @Override
