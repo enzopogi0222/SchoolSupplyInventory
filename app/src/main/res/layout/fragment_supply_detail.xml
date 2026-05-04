@@ -83,12 +83,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
-        <CheckBox
-            android:id="@+id/supply_borrowed"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Borrowed" />
-
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -125,6 +119,33 @@
             android:text="Delete Item"
             android:backgroundTint="@android:color/holo_red_dark"
             android:textColor="@android:color/white" />
+
+        <!-- Action Buttons Section -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+            <!-- Return button only -->
+            <Button
+                android:id="@+id/supply_return"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/return_item"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/last_updated_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:textSize="12sp"
+            android:textColor="@android:color/darker_gray"
+            android:padding="4dp"
+            android:text="Last updated: Just now" />
 
     </LinearLayout>
 </ScrollView>

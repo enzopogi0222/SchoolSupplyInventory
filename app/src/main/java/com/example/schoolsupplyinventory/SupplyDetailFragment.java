@@ -16,8 +16,6 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Spinner;
@@ -28,7 +26,10 @@ import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
 import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 public class SupplyDetailFragment extends Fragment {
@@ -43,12 +44,14 @@ public class SupplyDetailFragment extends Fragment {
     private EditText mBrandField;
     private Spinner mCategorySpinner;
     private Button mDateButton;
-    private CheckBox mBorrowedCheckBox;
     private TextView mBorrowerDisplayTextView;
     private Button mScanIdButton;
     private Button mDeleteButton;
     private ImageView mPhotoView;
     private Button mPhotoButton;
+    
+    private Button mReturnButton;
+    private TextView mLastUpdatedTextView;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -89,6 +92,7 @@ public class SupplyDetailFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 mItem.setName(s.toString());
+                updateLastUpdated();
             }
 
             @Override
@@ -104,6 +108,7 @@ public class SupplyDetailFragment extends Fragment {
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 mItem.setBrand(s.toString());
+                updateLastUpdated();
             }
 
             @Override
@@ -118,6 +123,7 @@ public class SupplyDetailFragment extends Fragment {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 mItem.setCategory(Category.values()[position]);
+                updateLastUpdated();
             }
 
             @Override
@@ -127,15 +133,6 @@ public class SupplyDetailFragment extends Fragment {
         mDateButton = (Button) v.findViewById(R.id.supply_date);
         mDateButton.setText(mItem.getDate().toString());
         mDateButton.setEnabled(false);
-
-        mBorrowedCheckBox = (CheckBox) v.findViewById(R.id.supply_borrowed);
-        mBorrowedCheckBox.setChecked(mItem.isBorrowed());
-        mBorrowedCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mItem.setBorrowed(isChecked);
-            }
-        });
 
         mBorrowerDisplayTextView = (TextView) v.findViewById(R.id.supply_borrower_display);
         updateBorrowerDisplay();
@@ -191,6 +188,21 @@ public class SupplyDetailFragment extends Fragment {
         mPhotoView = (ImageView) v.findViewById(R.id.supply_photo);
         updatePhotoView();
 
+        mReturnButton = (Button) v.findViewById(R.id.supply_return);
+        updateReturnButtonVisibility();
+        mReturnButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mItem.setBorrowed(false);
+                mItem.setBorrower(null);
+                updateBorrowerDisplay();
+                updateReturnButtonVisibility();
+                updateLastUpdated();
+            }
+        });
+
+        mLastUpdatedTextView = (TextView) v.findViewById(R.id.last_updated_status);
+
         return v;
     }
 
@@ -212,6 +224,19 @@ public class SupplyDetailFragment extends Fragment {
         }
     }
 
+    private void updateReturnButtonVisibility() {
+        if (mItem.isBorrowed()) {
+            mReturnButton.setVisibility(View.VISIBLE);
+        } else {
+            mReturnButton.setVisibility(View.GONE);
+        }
+    }
+
+    private void updateLastUpdated() {
+        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
+        mLastUpdatedTextView.setText(getString(R.string.last_updated_label, time));
+    }
+
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode != Activity.RESULT_OK) {
@@ -222,6 +247,9 @@ public class SupplyDetailFragment extends Fragment {
             String scannedId = data.getStringExtra("SCANNED_BARCODE");
             String name = SupplyLab.get(getActivity()).findNameByBarcode(scannedId);
             
+            // Mark as borrowed when ID is scanned
+            mItem.setBorrowed(true);
+
             if (name != null) {
                 mItem.setBorrower(name);
                 Toast.makeText(getActivity(), "Found user: " + name, Toast.LENGTH_SHORT).show();
@@ -230,6 +258,8 @@ public class SupplyDetailFragment extends Fragment {
                 Toast.makeText(getActivity(), "ID scanned: " + scannedId, Toast.LENGTH_SHORT).show();
             }
             updateBorrowerDisplay();
+            updateReturnButtonVisibility();
+            updateLastUpdated();
         } else if (requestCode == REQUEST_PHOTO) {
             Uri uri = FileProvider.getUriForFile(getActivity(),
                     "com.example.schoolsupplyinventory.fileprovider",
@@ -239,6 +269,7 @@ public class SupplyDetailFragment extends Fragment {
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
             updatePhotoView();
+            updateLastUpdated();
         }
     }
 }

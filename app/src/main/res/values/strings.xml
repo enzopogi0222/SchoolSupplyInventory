@@ -8,4 +8,8 @@
     <string name="mark_as_available">Mark as Available</string>
     <string name="mark_as_borrowed">Mark as Borrowed</string>
     <string name="subtitle_format">%1$d items</string>
+
+    <string name="save_changes">Save Changes</string>
+    <string name="return_item">Return Item</string>
+    <string name="last_updated_label">Last updated: %1$s</string>
 </resources>
