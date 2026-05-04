@@ -125,7 +125,25 @@ public class SupplyLab {
                 return null;
             }
             cursor.moveToFirst();
-            return cursor.getString(cursor.getColumnIndex(UserTable.Cols.NAME));
+            return cursor.getString(cursor.getColumnIndexOrThrow(UserTable.Cols.NAME));
+        } finally {
+            cursor.close();
+        }
+    }
+
+    public boolean isUserAlreadyBorrowing(String borrowerName) {
+        if (borrowerName == null) return false;
+        
+        Cursor cursor = mDatabase.query(
+                SupplyTable.NAME,
+                null,
+                SupplyTable.Cols.BORROWER + " = ? AND " + SupplyTable.Cols.BORROWED + " = 1",
+                new String[] { borrowerName },
+                null, null, null
+        );
+        
+        try {
+            return cursor.getCount() > 0;
         } finally {
             cursor.close();
         }

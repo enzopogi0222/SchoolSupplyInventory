@@ -159,6 +159,10 @@ public class SupplyDetailFragment extends Fragment {
         mScanIdButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (mItem.isBorrowed()) {
+                    Toast.makeText(getActivity(), "Item is already borrowed. Return it first.", Toast.LENGTH_SHORT).show();
+                    return;
+                }
                 Intent intent = new Intent(getActivity(), ScannerActivity.class);
                 startActivityForResult(intent, REQUEST_ID_SCAN);
             }
@@ -289,16 +293,23 @@ public class SupplyDetailFragment extends Fragment {
             String scannedId = data.getStringExtra("SCANNED_BARCODE");
             String name = SupplyLab.get(getActivity()).findNameByBarcode(scannedId);
             
+            String borrowerToTest = (name != null) ? name : scannedId;
+            
+            if (SupplyLab.get(getActivity()).isUserAlreadyBorrowing(borrowerToTest)) {
+                Toast.makeText(getActivity(), "This user has already borrowed an item", Toast.LENGTH_LONG).show();
+                return;
+            }
+
             // Mark as borrowed when ID is scanned
             mItem.setBorrowed(true);
             mItem.setDate(new Date()); // Record borrow time
 
             if (name != null) {
                 mItem.setBorrower(name);
-                Toast.makeText(getActivity(), "Found user: " + name, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), name, Toast.LENGTH_SHORT).show();
             } else {
-                mItem.setBorrower("ID: " + scannedId);
-                Toast.makeText(getActivity(), "ID scanned: " + scannedId, Toast.LENGTH_SHORT).show();
+                mItem.setBorrower(scannedId);
+                Toast.makeText(getActivity(), scannedId, Toast.LENGTH_SHORT).show();
             }
             updateDate();
             updateBorrowerDisplay();

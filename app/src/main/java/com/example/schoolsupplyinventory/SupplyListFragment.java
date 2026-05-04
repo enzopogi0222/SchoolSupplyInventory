@@ -163,13 +163,13 @@ public class SupplyListFragment extends Fragment {
             mCategoryTextView.setText("Category: " + mItem.getCategory().name());
             
             if (mItem.isBorrowed()) {
+                mStatusTextView.setText("Borrowed");
                 long diff = new Date().getTime() - mItem.getDate().getTime();
                 long days = diff / (1000 * 60 * 60 * 24);
+                
                 if (days >= 1) {
-                    mStatusTextView.setText("OVERDUE (" + days + "d)");
-                    mStatusTextView.setTextColor(Color.RED);
+                    mStatusTextView.setTextColor(Color.RED); // Overdue stays red
                 } else {
-                    mStatusTextView.setText("Borrowed");
                     mStatusTextView.setTextColor(Color.parseColor("#FF8C00")); // Dark Orange
                 }
             } else {

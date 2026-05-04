@@ -20,14 +20,14 @@ public class SupplyCursorWrapper extends CursorWrapper {
     }
 
     public SupplyItem getSupply() {
-        String uuidString = getString(getColumnIndex(SupplyTable.Cols.UUID));
-        String title = getString(getColumnIndex(SupplyTable.Cols.TITLE));
-        long date = getLong(getColumnIndex(SupplyTable.Cols.DATE));
-        int isBorrowed = getInt(getColumnIndex(SupplyTable.Cols.BORROWED));
-        String categoryName = getString(getColumnIndex(SupplyTable.Cols.CATEGORY));
-        String brand = getString(getColumnIndex(SupplyTable.Cols.BRAND));
-        String borrower = getString(getColumnIndex(SupplyTable.Cols.BORROWER));
-        String roomName = getString(getColumnIndex(SupplyTable.Cols.ROOM));
+        String uuidString = getString(getColumnIndexOrThrow(SupplyTable.Cols.UUID));
+        String title = getString(getColumnIndexOrThrow(SupplyTable.Cols.TITLE));
+        long date = getLong(getColumnIndexOrThrow(SupplyTable.Cols.DATE));
+        int isBorrowed = getInt(getColumnIndexOrThrow(SupplyTable.Cols.BORROWED));
+        String categoryName = getString(getColumnIndexOrThrow(SupplyTable.Cols.CATEGORY));
+        String brand = getString(getColumnIndexOrThrow(SupplyTable.Cols.BRAND));
+        String borrower = getString(getColumnIndexOrThrow(SupplyTable.Cols.BORROWER));
+        String roomName = getString(getColumnIndexOrThrow(SupplyTable.Cols.ROOM));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
