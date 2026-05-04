@@ -12,4 +12,5 @@
     <string name="save_changes">Save Changes</string>
     <string name="return_item">Return Item</string>
     <string name="last_updated_label">Last updated: %1$s</string>
+    <string name="borrowed_date_label">Borrowed Date</string>
 </resources>

@@ -85,9 +85,10 @@
             android:text="Select Room" />
 
         <TextView
+            android:id="@+id/supply_date_label"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Details"
+            android:text="@string/borrowed_date_label"
             style="?android:listSeparatorTextViewStyle" />
 
         <Button

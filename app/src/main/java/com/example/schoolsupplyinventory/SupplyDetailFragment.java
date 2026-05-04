@@ -213,6 +213,7 @@ public class SupplyDetailFragment extends Fragment {
                 mItem.setBorrower(null);
                 updateBorrowerDisplay();
                 updateReturnButtonVisibility();
+                updateDate();
                 updateLastUpdated();
             }
         });
@@ -259,7 +260,14 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     private void updateDate() {
-        mDateButton.setText(mItem.getDate().toString());
+        if (mItem.isBorrowed()) {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+            mDateButton.setText(dateFormat.format(mItem.getDate()));
+            mDateButton.setVisibility(View.VISIBLE);
+        } else {
+            mDateButton.setText("");
+            mDateButton.setVisibility(View.GONE);
+        }
         checkOverdue();
     }
 
