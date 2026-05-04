@@ -10,6 +10,7 @@ import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +35,17 @@ public class SupplyLab {
     public void addSupply(SupplyItem s) {
         ContentValues values = getContentValues(s);
         mDatabase.insert(SupplyTable.NAME, null, values);
+    }
+
+    public void deleteSupply(SupplyItem s) {
+        String uuidString = s.getId().toString();
+        mDatabase.delete(SupplyTable.NAME, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
+        
+        // Also delete the photo if it exists
+        File photoFile = getPhotoFile(s);
+        if (photoFile.exists()) {
+            photoFile.delete();
+        }
     }
 
     public List<SupplyItem> getItems() {
@@ -97,6 +109,15 @@ public class SupplyLab {
         } finally {
             cursor.close();
         }
+    }
+
+    public File getPhotoFile(SupplyItem item) {
+        File filesDir = mContext.getFilesDir();
+        File photoDir = new File(filesDir, "images");
+        if (!photoDir.exists()) {
+            photoDir.mkdirs();
+        }
+        return new File(photoDir, item.getPhotoFilename());
     }
 
     private SupplyCursorWrapper querySupplies(String whereClause, String[] whereArgs) {
