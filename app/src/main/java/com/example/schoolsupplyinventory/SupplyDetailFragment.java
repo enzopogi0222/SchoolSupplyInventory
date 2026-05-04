@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -42,6 +43,7 @@ public class SupplyDetailFragment extends Fragment {
     private File mPhotoFile;
     private EditText mTitleField;
     private EditText mBrandField;
+    private EditText mRoomField;
     private Spinner mCategorySpinner;
     private Button mDateButton;
     private TextView mBorrowerDisplayTextView;
@@ -52,6 +54,7 @@ public class SupplyDetailFragment extends Fragment {
     
     private Button mReturnButton;
     private TextView mLastUpdatedTextView;
+    private TextView mOverdueTextView;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -115,6 +118,22 @@ public class SupplyDetailFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
+        mRoomField = (EditText) v.findViewById(R.id.supply_room);
+        mRoomField.setText(mItem.getRoom());
+        mRoomField.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                mItem.setRoom(s.toString());
+                updateLastUpdated();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
         mCategorySpinner = (Spinner) v.findViewById(R.id.supply_category);
         mCategorySpinner.setAdapter(new ArrayAdapter<>(getActivity(),
                 android.R.layout.simple_spinner_dropdown_item, Category.values()));
@@ -131,7 +150,7 @@ public class SupplyDetailFragment extends Fragment {
         });
 
         mDateButton = (Button) v.findViewById(R.id.supply_date);
-        mDateButton.setText(mItem.getDate().toString());
+        updateDate();
         mDateButton.setEnabled(false);
 
         mBorrowerDisplayTextView = (TextView) v.findViewById(R.id.supply_borrower_display);
@@ -202,8 +221,28 @@ public class SupplyDetailFragment extends Fragment {
         });
 
         mLastUpdatedTextView = (TextView) v.findViewById(R.id.last_updated_status);
-
+        
         return v;
+    }
+
+    private void updateDate() {
+        mDateButton.setText(mItem.getDate().toString());
+        checkOverdue();
+    }
+
+    private void checkOverdue() {
+        if (mItem.isBorrowed()) {
+            long diff = new Date().getTime() - mItem.getDate().getTime();
+            long days = diff / (1000 * 60 * 60 * 24);
+            if (days >= 1) {
+                mDateButton.setTextColor(Color.RED);
+                Toast.makeText(getActivity(), "Warning: Item overdue by " + days + " day(s)!", Toast.LENGTH_LONG).show();
+            } else {
+                mDateButton.setTextColor(Color.BLACK);
+            }
+        } else {
+            mDateButton.setTextColor(Color.BLACK);
+        }
     }
 
     private void updateBorrowerDisplay() {
@@ -249,6 +288,7 @@ public class SupplyDetailFragment extends Fragment {
             
             // Mark as borrowed when ID is scanned
             mItem.setBorrowed(true);
+            mItem.setDate(new Date()); // Record borrow time
 
             if (name != null) {
                 mItem.setBorrower(name);
@@ -257,6 +297,7 @@ public class SupplyDetailFragment extends Fragment {
                 mItem.setBorrower("ID: " + scannedId);
                 Toast.makeText(getActivity(), "ID scanned: " + scannedId, Toast.LENGTH_SHORT).show();
             }
+            updateDate();
             updateBorrowerDisplay();
             updateReturnButtonVisibility();
             updateLastUpdated();

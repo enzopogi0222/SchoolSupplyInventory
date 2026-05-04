@@ -82,6 +82,26 @@ public class SupplyLab {
         }
     }
 
+    public List<SupplyItem> getSuppliesInRoom(String roomName) {
+        List<SupplyItem> items = new ArrayList<>();
+        SupplyCursorWrapper cursor = querySupplies(
+                SupplyTable.Cols.ROOM + " = ?",
+                new String[]{roomName}
+        );
+
+        try {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                items.add(cursor.getSupply());
+                cursor.moveToNext();
+            }
+        } finally {
+            cursor.close();
+        }
+
+        return items;
+    }
+
     public void updateSupply(SupplyItem item) {
         String uuidString = item.getId().toString();
         ContentValues values = getContentValues(item);
@@ -143,6 +163,7 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.CATEGORY, item.getCategory() != null ? item.getCategory().name() : null);
         values.put(SupplyTable.Cols.BRAND, item.getBrand());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
+        values.put(SupplyTable.Cols.ROOM, item.getRoom());
         return values;
     }
 }

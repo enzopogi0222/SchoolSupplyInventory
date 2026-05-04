@@ -13,6 +13,7 @@ public class SupplyItem {
     private String mBrand;
     private String mBorrower;
     private String mPhotoFilename;
+    private String mRoom;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -84,5 +85,13 @@ public class SupplyItem {
 
     public String getPhotoFilename() {
         return "IMG_" + getId().toString() + ".jpg";
+    }
+
+    public String getRoom() {
+        return mRoom;
+    }
+
+    public void setRoom(String room) {
+        mRoom = room;
     }
 }

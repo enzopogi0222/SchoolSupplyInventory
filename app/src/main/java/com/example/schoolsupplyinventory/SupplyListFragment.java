@@ -2,6 +2,7 @@ package com.example.schoolsupplyinventory;
 
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -17,6 +18,8 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import java.util.Date;
 import java.util.List;
 
 public class SupplyListFragment extends Fragment {
@@ -158,7 +161,21 @@ public class SupplyListFragment extends Fragment {
             mTitleTextView.setText(mItem.getName() != null ? mItem.getName() : "Unnamed Item");
             mBrandTextView.setText("Brand: " + (mItem.getBrand() != null ? mItem.getBrand() : "N/A"));
             mCategoryTextView.setText("Category: " + mItem.getCategory().name());
-            mStatusTextView.setText(mItem.isBorrowed() ? "Borrowed" : "Available");
+            
+            if (mItem.isBorrowed()) {
+                long diff = new Date().getTime() - mItem.getDate().getTime();
+                long days = diff / (1000 * 60 * 60 * 24);
+                if (days >= 1) {
+                    mStatusTextView.setText("OVERDUE (" + days + "d)");
+                    mStatusTextView.setTextColor(Color.RED);
+                } else {
+                    mStatusTextView.setText("Borrowed");
+                    mStatusTextView.setTextColor(Color.parseColor("#FF8C00")); // Dark Orange
+                }
+            } else {
+                mStatusTextView.setText("Available");
+                mStatusTextView.setTextColor(Color.parseColor("#006400")); // Dark Green
+            }
         }
 
         @Override

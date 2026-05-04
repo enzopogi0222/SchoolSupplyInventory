@@ -12,6 +12,7 @@ public class SupplyDbSchema {
             public static final String CATEGORY = "category";
             public static final String BRAND = "brand";
             public static final String BORROWER = "borrower";
+            public static final String ROOM = "room";
         }
     }
 
