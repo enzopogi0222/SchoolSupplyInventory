@@ -123,15 +123,6 @@
                 android:text="Scan ID" />
         </LinearLayout>
 
-        <Button
-            android:id="@+id/supply_delete"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Delete Item"
-            android:backgroundTint="@android:color/holo_red_dark"
-            android:textColor="@android:color/white" />
-
         <!-- Action Buttons Section -->
         <LinearLayout
             android:layout_width="match_parent"

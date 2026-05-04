@@ -11,6 +11,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -58,6 +60,12 @@ public class SupplyListFragment extends Fragment {
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                 final int position = viewHolder.getAdapterPosition();
                 final SupplyItem itemToDelete = mAdapter.mItems.get(position);
+
+                if (itemToDelete.isBorrowed()) {
+                    Toast.makeText(getActivity(), "Cannot delete a borrowed item. Return it first.", Toast.LENGTH_SHORT).show();
+                    mAdapter.notifyItemChanged(position);
+                    return;
+                }
 
                 new AlertDialog.Builder(getActivity())
                         .setTitle("Delete Item")

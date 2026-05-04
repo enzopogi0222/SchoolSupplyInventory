@@ -1,6 +1,7 @@
 package com.example.schoolsupplyinventory;
 
 import android.app.Activity;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -12,6 +13,9 @@ import android.provider.MediaStore;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -23,6 +27,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
@@ -49,13 +54,11 @@ public class SupplyDetailFragment extends Fragment {
     private Button mDateButton;
     private TextView mBorrowerDisplayTextView;
     private Button mScanIdButton;
-    private Button mDeleteButton;
     private ImageView mPhotoView;
     private Button mPhotoButton;
     
     private Button mReturnButton;
     private TextView mLastUpdatedTextView;
-    private TextView mOverdueTextView;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -69,6 +72,7 @@ public class SupplyDetailFragment extends Fragment {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true);
         UUID itemId = (UUID) getArguments().getSerializable(ARG_ITEM_ID);
         mItem = SupplyLab.get(getActivity()).getItem(itemId);
         mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
@@ -168,16 +172,6 @@ public class SupplyDetailFragment extends Fragment {
             }
         });
 
-        mDeleteButton = (Button) v.findViewById(R.id.supply_delete);
-        mDeleteButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                SupplyLab.get(getActivity()).deleteSupply(mItem);
-                mItem = null; // Prevent updateSupply in onPause
-                getActivity().finish();
-            }
-        });
-
         mPhotoButton = (Button) v.findViewById(R.id.supply_camera);
         final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
@@ -226,6 +220,38 @@ public class SupplyDetailFragment extends Fragment {
         mLastUpdatedTextView = (TextView) v.findViewById(R.id.last_updated_status);
         
         return v;
+    }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        super.onCreateOptionsMenu(menu, inflater);
+        inflater.inflate(R.menu.fragment_supply_detail, menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.delete_supply) {
+            if (mItem.isBorrowed()) {
+                Toast.makeText(getActivity(), "Cannot delete a borrowed item. Return it first.", Toast.LENGTH_SHORT).show();
+                return true;
+            }
+
+            new AlertDialog.Builder(getActivity())
+                    .setTitle("Delete Item")
+                    .setMessage("Are you sure you want to delete this item?")
+                    .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            SupplyLab.get(getActivity()).deleteSupply(mItem);
+                            mItem = null; // Prevent updateSupply in onPause
+                            getActivity().finish();
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void updateRoomButton() {
