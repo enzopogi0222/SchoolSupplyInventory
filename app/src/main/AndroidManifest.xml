@@ -38,6 +38,10 @@
         <activity
             android:name=".ScannerActivity"
             android:exported="false" />
+        <activity
+            android:name=".RoomPickerActivity"
+            android:exported="false"
+            android:label="Select Room" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

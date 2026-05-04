@@ -5,6 +5,7 @@ import android.database.CursorWrapper;
 import android.util.Log;
 
 import com.example.schoolsupplyinventory.Category;
+import com.example.schoolsupplyinventory.Room;
 import com.example.schoolsupplyinventory.SupplyItem;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 
@@ -26,7 +27,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         String categoryName = getString(getColumnIndex(SupplyTable.Cols.CATEGORY));
         String brand = getString(getColumnIndex(SupplyTable.Cols.BRAND));
         String borrower = getString(getColumnIndex(SupplyTable.Cols.BORROWER));
-        String room = getString(getColumnIndex(SupplyTable.Cols.ROOM));
+        String roomName = getString(getColumnIndex(SupplyTable.Cols.ROOM));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
@@ -34,7 +35,6 @@ public class SupplyCursorWrapper extends CursorWrapper {
         item.setBorrowed(isBorrowed != 0);
         item.setBrand(brand);
         item.setBorrower(borrower);
-        item.setRoom(room);
         
         if (categoryName != null) {
             try {
@@ -42,6 +42,15 @@ public class SupplyCursorWrapper extends CursorWrapper {
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "Unknown category: " + categoryName + ", defaulting to STATIONERY");
                 item.setCategory(Category.STATIONERY);
+            }
+        }
+
+        if (roomName != null) {
+            try {
+                item.setRoom(Room.valueOf(roomName));
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "Unknown room: " + roomName + ", defaulting to ITE_OFFICE");
+                item.setRoom(Room.ITE_OFFICE);
             }
         }
 

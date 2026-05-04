@@ -82,11 +82,11 @@ public class SupplyLab {
         }
     }
 
-    public List<SupplyItem> getSuppliesInRoom(String roomName) {
+    public List<SupplyItem> getSuppliesInRoom(Room room) {
         List<SupplyItem> items = new ArrayList<>();
         SupplyCursorWrapper cursor = querySupplies(
                 SupplyTable.Cols.ROOM + " = ?",
-                new String[]{roomName}
+                new String[]{room.name()}
         );
 
         try {
@@ -163,7 +163,7 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.CATEGORY, item.getCategory() != null ? item.getCategory().name() : null);
         values.put(SupplyTable.Cols.BRAND, item.getBrand());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
-        values.put(SupplyTable.Cols.ROOM, item.getRoom());
+        values.put(SupplyTable.Cols.ROOM, item.getRoom() != null ? item.getRoom().name() : null);
         return values;
     }
 }

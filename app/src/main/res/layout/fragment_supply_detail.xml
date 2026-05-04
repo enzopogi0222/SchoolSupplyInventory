@@ -78,11 +78,11 @@
             android:text="Location / Room"
             style="?android:listSeparatorTextViewStyle" />
 
-        <EditText
-            android:id="@+id/supply_room"
+        <Button
+            android:id="@+id/supply_room_button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Enter room (e.g., Room 302)" />
+            android:text="Select Room" />
 
         <TextView
             android:layout_width="match_parent"

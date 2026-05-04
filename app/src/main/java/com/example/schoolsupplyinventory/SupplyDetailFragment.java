@@ -38,12 +38,13 @@ public class SupplyDetailFragment extends Fragment {
     private static final String ARG_ITEM_ID = "item_id";
     private static final int REQUEST_ID_SCAN = 2;
     private static final int REQUEST_PHOTO = 3;
+    private static final int REQUEST_ROOM = 4;
 
     private SupplyItem mItem;
     private File mPhotoFile;
     private EditText mTitleField;
     private EditText mBrandField;
-    private EditText mRoomField;
+    private Button mRoomButton;
     private Spinner mCategorySpinner;
     private Button mDateButton;
     private TextView mBorrowerDisplayTextView;
@@ -118,20 +119,14 @@ public class SupplyDetailFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
-        mRoomField = (EditText) v.findViewById(R.id.supply_room);
-        mRoomField.setText(mItem.getRoom());
-        mRoomField.addTextChangedListener(new TextWatcher() {
+        mRoomButton = (Button) v.findViewById(R.id.supply_room_button);
+        updateRoomButton();
+        mRoomButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                mItem.setRoom(s.toString());
-                updateLastUpdated();
+            public void onClick(View v) {
+                Intent intent = RoomPickerActivity.newIntent(getActivity());
+                startActivityForResult(intent, REQUEST_ROOM);
             }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
         });
 
         mCategorySpinner = (Spinner) v.findViewById(R.id.supply_category);
@@ -225,6 +220,10 @@ public class SupplyDetailFragment extends Fragment {
         return v;
     }
 
+    private void updateRoomButton() {
+        mRoomButton.setText(mItem.getRoom().toString());
+    }
+
     private void updateDate() {
         mDateButton.setText(mItem.getDate().toString());
         checkOverdue();
@@ -310,6 +309,11 @@ public class SupplyDetailFragment extends Fragment {
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
             updatePhotoView();
+            updateLastUpdated();
+        } else if (requestCode == REQUEST_ROOM && data != null) {
+            int roomOrdinal = data.getIntExtra(RoomPickerActivity.EXTRA_ROOM_ORDINAL, 0);
+            mItem.setRoom(Room.values()[roomOrdinal]);
+            updateRoomButton();
             updateLastUpdated();
         }
     }
