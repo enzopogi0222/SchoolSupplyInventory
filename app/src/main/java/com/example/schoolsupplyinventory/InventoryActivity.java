@@ -9,6 +9,6 @@ public class InventoryActivity extends SingleFragmentActivity {
 
     @Override
     protected Fragment createFragment() {
-        return new SupplyListFragment();
+        return new DashboardFragment();
     }
 }
