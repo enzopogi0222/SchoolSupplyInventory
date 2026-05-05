@@ -2,7 +2,7 @@ package com.example.schoolsupplyinventory;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -10,24 +10,27 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.Date;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import java.io.File;
 import java.util.List;
 
 public class SupplyListFragment extends Fragment {
 
     private RecyclerView mSupplyRecyclerView;
     private SupplyAdapter mAdapter;
+    private FloatingActionButton mAddSupplyFab;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -42,11 +45,28 @@ public class SupplyListFragment extends Fragment {
 
         mSupplyRecyclerView = (RecyclerView) view.findViewById(R.id.inventory_recycler_view);
         mSupplyRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        mSupplyRecyclerView.setPadding(0, 8, 0, 8);
+        mSupplyRecyclerView.setClipToPadding(false);
+
+        mAddSupplyFab = (FloatingActionButton) view.findViewById(R.id.add_supply_fab);
+        mAddSupplyFab.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                createNewSupply();
+            }
+        });
 
         setupItemTouchHelper();
         updateUI();
 
         return view;
+    }
+
+    private void createNewSupply() {
+        SupplyItem item_new = new SupplyItem();
+        SupplyLab.get(getActivity()).addSupply(item_new);
+        Intent intent = SupplyPagerActivity.newIntent(getActivity(), item_new.getId());
+        startActivity(intent);
     }
 
     private void setupItemTouchHelper() {
@@ -60,12 +80,6 @@ public class SupplyListFragment extends Fragment {
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                 final int position = viewHolder.getAdapterPosition();
                 final SupplyItem itemToDelete = mAdapter.mItems.get(position);
-
-                if (itemToDelete.isBorrowed()) {
-                    Toast.makeText(getActivity(), "Cannot delete a borrowed item. Return it first.", Toast.LENGTH_SHORT).show();
-                    mAdapter.notifyItemChanged(position);
-                    return;
-                }
 
                 new AlertDialog.Builder(getActivity())
                         .setTitle("Delete Item")
@@ -112,11 +126,7 @@ public class SupplyListFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
         if (itemId == R.id.new_supply) {
-            SupplyItem item_new = new SupplyItem();
-            SupplyLab.get(getActivity()).addSupply(item_new);
-
-            Intent intent = SupplyPagerActivity.newIntent(getActivity(), item_new.getId());
-            startActivity(intent);
+            createNewSupply();
             return true;
         } else if (itemId == R.id.show_subtitle) {
             updateSubtitle();
@@ -132,7 +142,9 @@ public class SupplyListFragment extends Fragment {
         String subtitle = getString(R.string.subtitle_format, count);
 
         AppCompatActivity activity = (AppCompatActivity) getActivity();
-        activity.getSupportActionBar().setSubtitle(subtitle);
+        if (activity.getSupportActionBar() != null) {
+            activity.getSupportActionBar().setSubtitle(subtitle);
+        }
     }
 
     private void updateUI() {
@@ -153,6 +165,7 @@ public class SupplyListFragment extends Fragment {
         private TextView mBrandTextView;
         private TextView mCategoryTextView;
         private TextView mStatusTextView;
+        private ImageView mPhotoThumbnail;
         private SupplyItem mItem;
 
         public SupplyHolder(LayoutInflater inflater, ViewGroup parent) {
@@ -162,27 +175,29 @@ public class SupplyListFragment extends Fragment {
             mBrandTextView = (TextView) itemView.findViewById(R.id.item_brand);
             mCategoryTextView = (TextView) itemView.findViewById(R.id.item_category);
             mStatusTextView = (TextView) itemView.findViewById(R.id.item_status);
+            mPhotoThumbnail = (ImageView) itemView.findViewById(R.id.item_photo_thumbnail);
         }
 
         public void bind(SupplyItem item) {
             mItem = item;
-            mTitleTextView.setText(mItem.getName() != null ? mItem.getName() : "Unnamed Item");
-            mBrandTextView.setText("Brand: " + (mItem.getBrand() != null ? mItem.getBrand() : "N/A"));
-            mCategoryTextView.setText("Category: " + mItem.getCategory().name());
+            mTitleTextView.setText(mItem.getName() != null && !mItem.getName().isEmpty() ? mItem.getName() : "Unnamed Item");
+            mBrandTextView.setText(mItem.getBrand() != null ? mItem.getBrand() : "No Brand");
+            mCategoryTextView.setText(mItem.getCategory().name());
             
             if (mItem.isBorrowed()) {
-                mStatusTextView.setText("Borrowed");
-                long diff = new Date().getTime() - mItem.getDate().getTime();
-                long days = diff / (1000 * 60 * 60 * 24);
-                
-                if (days >= 1) {
-                    mStatusTextView.setTextColor(Color.RED); // Overdue stays red
-                } else {
-                    mStatusTextView.setTextColor(Color.parseColor("#FF8C00")); // Dark Orange
-                }
+                mStatusTextView.setText("BORROWED");
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.holo_red_dark));
             } else {
-                mStatusTextView.setText("Available");
-                mStatusTextView.setTextColor(Color.parseColor("#006400")); // Dark Green
+                mStatusTextView.setText("AVAILABLE");
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.holo_green_dark));
+            }
+
+            File photoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
+            if (photoFile == null || !photoFile.exists()) {
+                mPhotoThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
+            } else {
+                Bitmap bitmap = PictureUtils.getScaledBitmap(photoFile.getPath(), 140, 140); // Slightly higher res for thumbnail
+                mPhotoThumbnail.setImageBitmap(bitmap);
             }
         }
 

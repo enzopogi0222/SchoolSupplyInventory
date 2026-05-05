@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -18,18 +17,20 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ImageView;
-import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -43,21 +44,19 @@ public class SupplyDetailFragment extends Fragment {
     private static final String ARG_ITEM_ID = "item_id";
     private static final int REQUEST_ID_SCAN = 2;
     private static final int REQUEST_PHOTO = 3;
-    private static final int REQUEST_ROOM = 4;
 
     private SupplyItem mItem;
     private File mPhotoFile;
-    private EditText mTitleField;
-    private EditText mBrandField;
-    private Button mRoomButton;
-    private Spinner mCategorySpinner;
-    private Button mDateButton;
+    private TextInputEditText mTitleField;
+    private TextInputEditText mBrandField;
+    private MaterialAutoCompleteTextView mCategoryDropdown;
+    private MaterialButton mDateButton;
+    private MaterialSwitch mBorrowedSwitch;
     private TextView mBorrowerDisplayTextView;
-    private Button mScanIdButton;
+    private MaterialButton mScanIdButton;
+    private MaterialButton mReportButton;
+    private FloatingActionButton mPhotoButton;
     private ImageView mPhotoView;
-    private Button mPhotoButton;
-    
-    private Button mReturnButton;
     private TextView mLastUpdatedTextView;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
@@ -91,7 +90,7 @@ public class SupplyDetailFragment extends Fragment {
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_supply_detail, container, false);
 
-        mTitleField = (EditText) v.findViewById(R.id.supply_title);
+        mTitleField = v.findViewById(R.id.supply_title);
         mTitleField.setText(mItem.getName());
         mTitleField.addTextChangedListener(new TextWatcher() {
             @Override
@@ -107,7 +106,7 @@ public class SupplyDetailFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
-        mBrandField = (EditText) v.findViewById(R.id.supply_brand);
+        mBrandField = v.findViewById(R.id.supply_brand);
         mBrandField.setText(mItem.getBrand());
         mBrandField.addTextChangedListener(new TextWatcher() {
             @Override
@@ -123,103 +122,78 @@ public class SupplyDetailFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
-        mRoomButton = (Button) v.findViewById(R.id.supply_room_button);
-        updateRoomButton();
-        mRoomButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mItem.getBorrower() == null) {
-                    Toast.makeText(getActivity(), "Please scan borrower ID first", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Intent intent = RoomPickerActivity.newIntent(getActivity());
-                startActivityForResult(intent, REQUEST_ROOM);
-            }
+        mCategoryDropdown = v.findViewById(R.id.supply_category);
+        ArrayAdapter<Category> adapter = new ArrayAdapter<>(getActivity(),
+                android.R.layout.simple_dropdown_item_1line, Category.values());
+        mCategoryDropdown.setAdapter(adapter);
+        mCategoryDropdown.setText(mItem.getCategory().toString(), false);
+        mCategoryDropdown.setOnItemClickListener((parent, view, position, id) -> {
+            mItem.setCategory(Category.values()[position]);
+            updateLastUpdated();
         });
 
-        mCategorySpinner = (Spinner) v.findViewById(R.id.supply_category);
-        mCategorySpinner.setAdapter(new ArrayAdapter<>(getActivity(),
-                android.R.layout.simple_spinner_dropdown_item, Category.values()));
-        mCategorySpinner.setSelection(mItem.getCategory().ordinal());
-        mCategorySpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                mItem.setCategory(Category.values()[position]);
-                updateLastUpdated();
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {}
-        });
-
-        mDateButton = (Button) v.findViewById(R.id.supply_date);
+        mDateButton = v.findViewById(R.id.supply_date);
         updateDate();
         mDateButton.setEnabled(false);
 
-        mBorrowerDisplayTextView = (TextView) v.findViewById(R.id.supply_borrower_display);
-        updateBorrowerDisplay();
-
-        mScanIdButton = (Button) v.findViewById(R.id.supply_scan_id);
-        mScanIdButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (mItem.isBorrowed()) {
-                    Toast.makeText(getActivity(), "Item is already borrowed. Return it first.", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                Intent intent = new Intent(getActivity(), ScannerActivity.class);
-                startActivityForResult(intent, REQUEST_ID_SCAN);
-            }
-        });
-
-        mPhotoButton = (Button) v.findViewById(R.id.supply_camera);
-        final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-
-        PackageManager packageManager = getActivity().getPackageManager();
-        boolean canTakePhoto = mPhotoFile != null &&
-                captureImage.resolveActivity(packageManager) != null;
-        mPhotoButton.setEnabled(canTakePhoto);
-
-        mPhotoButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Uri uri = FileProvider.getUriForFile(getActivity(),
-                        "com.example.schoolsupplyinventory.fileprovider",
-                        mPhotoFile);
-                captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
-
-                List<ResolveInfo> cameraActivities = getActivity()
-                        .getPackageManager().queryIntentActivities(captureImage,
-                                PackageManager.MATCH_DEFAULT_ONLY);
-
-                for (ResolveInfo activity : cameraActivities) {
-                    getActivity().grantUriPermission(activity.activityInfo.packageName,
-                            uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                }
-
-                startActivityForResult(captureImage, REQUEST_PHOTO);
-            }
-        });
-
-        mPhotoView = (ImageView) v.findViewById(R.id.supply_photo);
-        updatePhotoView();
-
-        mReturnButton = (Button) v.findViewById(R.id.supply_return);
-        updateReturnButtonVisibility();
-        mReturnButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mItem.setBorrowed(false);
+        mBorrowedSwitch = v.findViewById(R.id.supply_borrowed);
+        mBorrowedSwitch.setChecked(mItem.isBorrowed());
+        mBorrowedSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            mItem.setBorrowed(isChecked);
+            if (!isChecked) {
                 mItem.setBorrower(null);
                 updateBorrowerDisplay();
-                updateReturnButtonVisibility();
-                updateDate();
-                updateLastUpdated();
             }
+            updateDate();
+            updateLastUpdated();
         });
 
-        mLastUpdatedTextView = (TextView) v.findViewById(R.id.last_updated_status);
-        
+        mBorrowerDisplayTextView = v.findViewById(R.id.supply_borrower_display);
+        updateBorrowerDisplay();
+
+        mScanIdButton = v.findViewById(R.id.supply_scan_id);
+        mScanIdButton.setOnClickListener(v1 -> {
+            Intent intent = new Intent(getActivity(), ScannerActivity.class);
+            startActivityForResult(intent, REQUEST_ID_SCAN);
+        });
+
+        mReportButton = v.findViewById(R.id.supply_report);
+        mReportButton.setOnClickListener(v1 -> {
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_TEXT, getSupplyReport());
+            i.putExtra(Intent.EXTRA_SUBJECT, "School Supply Status Report");
+            i = Intent.createChooser(i, "Send report via:");
+            startActivity(i);
+        });
+
+        mPhotoButton = v.findViewById(R.id.supply_camera);
+        mPhotoView = v.findViewById(R.id.supply_photo);
+
+        mPhotoButton.setOnClickListener(v1 -> {
+            final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+            Uri uri = FileProvider.getUriForFile(getActivity(),
+                    "com.example.schoolsupplyinventory.fileprovider",
+                    mPhotoFile);
+            captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+
+            List<ResolveInfo> cameraActivities = getActivity()
+                    .getPackageManager().queryIntentActivities(captureImage,
+                            PackageManager.MATCH_DEFAULT_ONLY);
+
+            for (ResolveInfo activity : cameraActivities) {
+                getActivity().grantUriPermission(activity.activityInfo.packageName,
+                        uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            }
+
+            startActivityForResult(captureImage, REQUEST_PHOTO);
+        });
+
+        updatePhotoView();
+
+        mLastUpdatedTextView = v.findViewById(R.id.last_updated_status);
+        updateLastUpdated();
+
         return v;
     }
 
@@ -232,21 +206,13 @@ public class SupplyDetailFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.delete_supply) {
-            if (mItem.isBorrowed()) {
-                Toast.makeText(getActivity(), "Cannot delete a borrowed item. Return it first.", Toast.LENGTH_SHORT).show();
-                return true;
-            }
-
             new AlertDialog.Builder(getActivity())
                     .setTitle("Delete Item")
                     .setMessage("Are you sure you want to delete this item?")
-                    .setPositiveButton("Delete", new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            SupplyLab.get(getActivity()).deleteSupply(mItem);
-                            mItem = null; // Prevent updateSupply in onPause
-                            getActivity().finish();
-                        }
+                    .setPositiveButton("Delete", (dialog, which) -> {
+                        SupplyLab.get(getActivity()).deleteSupply(mItem);
+                        mItem = null;
+                        getActivity().finish();
                     })
                     .setNegativeButton("Cancel", null)
                     .show();
@@ -255,35 +221,9 @@ public class SupplyDetailFragment extends Fragment {
         return super.onOptionsItemSelected(item);
     }
 
-    private void updateRoomButton() {
-        mRoomButton.setText(mItem.getRoom().toString());
-    }
-
     private void updateDate() {
-        if (mItem.isBorrowed()) {
-            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-            mDateButton.setText(dateFormat.format(mItem.getDate()));
-            mDateButton.setVisibility(View.VISIBLE);
-        } else {
-            mDateButton.setText("");
-            mDateButton.setVisibility(View.GONE);
-        }
-        checkOverdue();
-    }
-
-    private void checkOverdue() {
-        if (mItem.isBorrowed()) {
-            long diff = new Date().getTime() - mItem.getDate().getTime();
-            long days = diff / (1000 * 60 * 60 * 24);
-            if (days >= 1) {
-                mDateButton.setTextColor(Color.RED);
-                Toast.makeText(getActivity(), "Warning: Item overdue by " + days + " day(s)!", Toast.LENGTH_LONG).show();
-            } else {
-                mDateButton.setTextColor(Color.BLACK);
-            }
-        } else {
-            mDateButton.setTextColor(Color.BLACK);
-        }
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+        mDateButton.setText("Date: " + dateFormat.format(mItem.getDate()));
     }
 
     private void updateBorrowerDisplay() {
@@ -304,17 +244,15 @@ public class SupplyDetailFragment extends Fragment {
         }
     }
 
-    private void updateReturnButtonVisibility() {
-        if (mItem.isBorrowed()) {
-            mReturnButton.setVisibility(View.VISIBLE);
-        } else {
-            mReturnButton.setVisibility(View.GONE);
-        }
-    }
-
     private void updateLastUpdated() {
         String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-        mLastUpdatedTextView.setText(getString(R.string.last_updated_label, time));
+        mLastUpdatedTextView.setText("Last updated: " + time);
+    }
+
+    private String getSupplyReport() {
+        String borrowedString = mItem.isBorrowed() ?
+            "Status: Borrowed by " + mItem.getBorrower() : "Status: Available";
+        return "Item: " + mItem.getName() + "\nBrand: " + mItem.getBrand() + "\n" + borrowedString;
     }
 
     @Override
@@ -326,43 +264,19 @@ public class SupplyDetailFragment extends Fragment {
         if (requestCode == REQUEST_ID_SCAN && data != null) {
             String scannedId = data.getStringExtra("SCANNED_BARCODE");
             String name = SupplyLab.get(getActivity()).findNameByBarcode(scannedId);
-            
-            String borrowerToTest = (name != null) ? name : scannedId;
-            
-            if (SupplyLab.get(getActivity()).isUserAlreadyBorrowing(borrowerToTest)) {
-                Toast.makeText(getActivity(), "This user has already borrowed an item", Toast.LENGTH_LONG).show();
-                return;
-            }
 
-            // Mark as borrowed when ID is scanned
             mItem.setBorrowed(true);
-            mItem.setDate(new Date()); // Record borrow time
+            mBorrowedSwitch.setChecked(true);
 
             if (name != null) {
                 mItem.setBorrower(name);
-                Toast.makeText(getActivity(), name, Toast.LENGTH_SHORT).show();
             } else {
                 mItem.setBorrower(scannedId);
-                Toast.makeText(getActivity(), scannedId, Toast.LENGTH_SHORT).show();
             }
-            updateDate();
             updateBorrowerDisplay();
-            updateReturnButtonVisibility();
             updateLastUpdated();
         } else if (requestCode == REQUEST_PHOTO) {
-            Uri uri = FileProvider.getUriForFile(getActivity(),
-                    "com.example.schoolsupplyinventory.fileprovider",
-                    mPhotoFile);
-
-            getActivity().revokeUriPermission(uri,
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-
             updatePhotoView();
-            updateLastUpdated();
-        } else if (requestCode == REQUEST_ROOM && data != null) {
-            int roomOrdinal = data.getIntExtra(RoomPickerActivity.EXTRA_ROOM_ORDINAL, 0);
-            mItem.setRoom(Room.values()[roomOrdinal]);
-            updateRoomButton();
             updateLastUpdated();
         }
     }
