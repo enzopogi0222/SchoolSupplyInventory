@@ -182,6 +182,8 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.BRAND, item.getBrand());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
         values.put(SupplyTable.Cols.ROOM, item.getRoom() != null ? item.getRoom().name() : null);
+        values.put(SupplyTable.Cols.QUANTITY, item.getQuantity());
+        values.put(SupplyTable.Cols.LOCATION, item.getLocation());
         return values;
     }
 }

@@ -8,7 +8,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 6;
+    private static final int VERSION = 7;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -26,7 +26,9 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.CATEGORY + ", " +
                 SupplyTable.Cols.BRAND + ", " +
                 SupplyTable.Cols.BORROWER + ", " +
-                SupplyTable.Cols.ROOM + ")"
+                SupplyTable.Cols.ROOM + ", " +
+                SupplyTable.Cols.QUANTITY + ", " +
+                SupplyTable.Cols.LOCATION + ")"
         );
 
         db.execSQL("create table " + UserTable.NAME + "(" +
@@ -58,6 +60,10 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 6) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.ROOM);
+        }
+        if (oldVersion < 7) {
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.QUANTITY);
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.LOCATION);
         }
     }
 }

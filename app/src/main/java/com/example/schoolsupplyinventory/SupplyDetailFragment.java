@@ -50,6 +50,8 @@ public class SupplyDetailFragment extends Fragment {
     private TextInputEditText mTitleField;
     private TextInputEditText mBrandField;
     private MaterialAutoCompleteTextView mCategoryDropdown;
+    private TextInputEditText mQuantityField;
+    private TextInputEditText mLocationField;
     private MaterialButton mDateButton;
     private MaterialSwitch mBorrowedSwitch;
     private TextView mBorrowerDisplayTextView;
@@ -130,6 +132,42 @@ public class SupplyDetailFragment extends Fragment {
         mCategoryDropdown.setOnItemClickListener((parent, view, position, id) -> {
             mItem.setCategory(Category.values()[position]);
             updateLastUpdated();
+        });
+
+        mQuantityField = v.findViewById(R.id.supply_quantity);
+        mQuantityField.setText(String.valueOf(mItem.getQuantity()));
+        mQuantityField.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                try {
+                    mItem.setQuantity(Integer.parseInt(s.toString()));
+                } catch (NumberFormatException e) {
+                    mItem.setQuantity(0);
+                }
+                updateLastUpdated();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        mLocationField = v.findViewById(R.id.supply_location);
+        mLocationField.setText(mItem.getLocation());
+        mLocationField.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                mItem.setLocation(s.toString());
+                updateLastUpdated();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
         });
 
         mDateButton = v.findViewById(R.id.supply_date);

@@ -14,6 +14,8 @@ public class SupplyItem {
     private String mBorrower;
     private String mPhotoFilename;
     private Room mRoom;
+    private int mQuantity;
+    private String mLocation;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -24,6 +26,8 @@ public class SupplyItem {
         mDate = new Date();
         mCategory = Category.STATIONERY;
         mRoom = Room.ITE_OFFICE;
+        mQuantity = 1;
+        mLocation = "";
     }
 
     public SupplyItem(String name, boolean isBorrowed) {
@@ -94,5 +98,21 @@ public class SupplyItem {
 
     public void setRoom(Room room) {
         mRoom = room;
+    }
+
+    public int getQuantity() {
+        return mQuantity;
+    }
+
+    public void setQuantity(int quantity) {
+        mQuantity = quantity;
+    }
+
+    public String getLocation() {
+        return mLocation;
+    }
+
+    public void setLocation(String location) {
+        mLocation = location;
     }
 }
