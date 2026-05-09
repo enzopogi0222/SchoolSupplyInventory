@@ -165,6 +165,7 @@ public class SupplyListFragment extends Fragment {
         private TextView mBrandTextView;
         private TextView mCategoryTextView;
         private TextView mStatusTextView;
+        private TextView mQuantityTextView;
         private ImageView mPhotoThumbnail;
         private SupplyItem mItem;
 
@@ -175,6 +176,7 @@ public class SupplyListFragment extends Fragment {
             mBrandTextView = (TextView) itemView.findViewById(R.id.item_brand);
             mCategoryTextView = (TextView) itemView.findViewById(R.id.item_category);
             mStatusTextView = (TextView) itemView.findViewById(R.id.item_status);
+            mQuantityTextView = (TextView) itemView.findViewById(R.id.item_quantity);
             mPhotoThumbnail = (ImageView) itemView.findViewById(R.id.item_photo_thumbnail);
         }
 
@@ -183,13 +185,14 @@ public class SupplyListFragment extends Fragment {
             mTitleTextView.setText(mItem.getName() != null && !mItem.getName().isEmpty() ? mItem.getName() : "Unnamed Item");
             mBrandTextView.setText(mItem.getBrand() != null ? mItem.getBrand() : "No Brand");
             mCategoryTextView.setText(mItem.getCategory().name());
+            mQuantityTextView.setText("Stock: " + mItem.getQuantity());
             
-            if (mItem.isBorrowed()) {
-                mStatusTextView.setText("BORROWED");
-                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.holo_red_dark));
-            } else {
+            if (mItem.getQuantity() > 0) {
                 mStatusTextView.setText("AVAILABLE");
                 mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.holo_green_dark));
+            } else {
+                mStatusTextView.setText("OUT OF STOCK");
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), android.R.color.holo_red_dark));
             }
 
             File photoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);

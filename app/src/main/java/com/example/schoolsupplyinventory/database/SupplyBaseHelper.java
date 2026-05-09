@@ -4,11 +4,12 @@ import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 7;
+    private static final int VERSION = 8;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -37,6 +38,22 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 UserTable.Cols.NAME + ", " +
                 UserTable.Cols.BARCODE + ")"
         );
+
+        createBorrowTable(db);
+    }
+
+    private void createBorrowTable(SQLiteDatabase db) {
+        db.execSQL("create table " + BorrowTable.NAME + "(" +
+                " _id integer primary key autoincrement, " +
+                BorrowTable.Cols.UUID + ", " +
+                BorrowTable.Cols.ITEM_ID + ", " +
+                BorrowTable.Cols.BORROWER_NAME + ", " +
+                BorrowTable.Cols.QUANTITY + ", " +
+                BorrowTable.Cols.DATE_BORROWED + ", " +
+                BorrowTable.Cols.EXPECTED_RETURN_DATE + ", " +
+                BorrowTable.Cols.ACTUAL_RETURN_DATE + ", " +
+                BorrowTable.Cols.STATUS + ")"
+        );
     }
 
     @Override
@@ -64,6 +81,9 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 7) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.QUANTITY);
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.LOCATION);
+        }
+        if (oldVersion < 8) {
+            createBorrowTable(db);
         }
     }
 }
