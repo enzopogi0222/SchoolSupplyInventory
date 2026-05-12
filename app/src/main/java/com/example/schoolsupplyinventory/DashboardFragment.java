@@ -87,10 +87,8 @@ public class DashboardFragment extends Fragment {
             }
         });
         
-        mLogoutButton.setOnClickListener(v1 -> {
-            startActivity(new Intent(getActivity(), LoginActivity.class));
-            getActivity().finish();
-        });
+        // Login removed, so Logout button should just exit the app or be hidden
+        mLogoutButton.setVisibility(View.GONE);
 
         return v;
     }

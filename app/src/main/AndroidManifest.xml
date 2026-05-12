@@ -22,9 +22,8 @@
         android:theme="@style/Theme.SchoolSupplyInventory">
 
         <activity
-            android:name=".LoginActivity"
-            android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:name=".InventoryActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -32,8 +31,9 @@
         </activity>
 
         <activity
-            android:name=".InventoryActivity"
-            android:exported="false" />
+            android:name=".LoginActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
         <activity
             android:name=".SupplyPagerActivity"
