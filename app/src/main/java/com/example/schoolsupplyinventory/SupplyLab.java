@@ -45,9 +45,16 @@ public class SupplyLab {
     }
 
     public void addSupply(SupplyItem s) {
+        addSupply(s, null);
+    }
+
+    public void addSupply(SupplyItem s, Callback<Void> callback) {
         mExecutor.execute(() -> {
             ContentValues values = getContentValues(s);
             mDatabase.insert(SupplyTable.NAME, null, values);
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
         });
     }
 
@@ -57,7 +64,7 @@ public class SupplyLab {
             mDatabase.delete(SupplyTable.NAME, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
             
             File photoFile = getPhotoFile(s);
-            if (photoFile.exists()) {
+            if (photoFile != null && photoFile.exists()) {
                 photoFile.delete();
             }
         });
@@ -207,6 +214,23 @@ public class SupplyLab {
         return records;
     }
 
+    public void getReturnedCountAsync(Callback<Integer> callback) {
+        mExecutor.execute(() -> {
+            int count = 0;
+            Cursor cursor = mDatabase.query(BorrowTable.NAME, new String[]{"SUM(" + BorrowTable.Cols.QUANTITY + ")"}, 
+                BorrowTable.Cols.STATUS + " = ?", new String[]{"Returned"}, null, null, null);
+            try {
+                if (cursor.moveToFirst()) {
+                    count = cursor.getInt(0);
+                }
+            } finally {
+                cursor.close();
+            }
+            final int result = count;
+            mMainHandler.post(() -> callback.onComplete(result));
+        });
+    }
+
     private List<BorrowRecord> getActiveBorrowRecordsForItem(UUID itemId) {
         List<BorrowRecord> records = new ArrayList<>();
         Cursor cursor = mDatabase.query(BorrowTable.NAME, null, BorrowTable.Cols.ITEM_ID + " = ? AND " + BorrowTable.Cols.STATUS + " = ?", new String[]{itemId.toString(), "Borrowed"}, null, null, null);
@@ -242,6 +266,7 @@ public class SupplyLab {
     }
 
     public File getPhotoFile(SupplyItem item) {
+        if (item == null) return null;
         File filesDir = mContext.getFilesDir();
         File photoDir = new File(filesDir, "images");
         if (!photoDir.exists()) photoDir.mkdirs();

@@ -30,7 +30,7 @@
             android:layout_width="140dp"
             android:layout_height="16dp"
             android:layout_marginStart="16dp"
-            android:background="#33FFFFFF"
+            android:background="#1F000000"
             app:layout_constraintStart_toEndOf="@id/shimmer_image"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -39,7 +39,7 @@
             android:layout_width="100dp"
             android:layout_height="12dp"
             android:layout_marginTop="8dp"
-            android:background="#1AFFFFFF"
+            android:background="#0F000000"
             app:layout_constraintStart_toStartOf="@id/shimmer_title"
             app:layout_constraintTop_toBottomOf="@id/shimmer_title" />
 
@@ -48,7 +48,7 @@
             android:layout_width="80dp"
             android:layout_height="20dp"
             android:layout_marginTop="12dp"
-            android:background="#1AFFFFFF"
+            android:background="#0F000000"
             app:layout_constraintStart_toStartOf="@id/shimmer_title"
             app:layout_constraintTop_toBottomOf="@id/shimmer_subtitle" />
 

@@ -19,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -95,7 +96,7 @@ public class SupplyListFragment extends Fragment {
         mFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
 
         mSwipeRefreshLayout = view.findViewById(R.id.swipe_refresh_layout);
-        mSwipeRefreshLayout.setColorSchemeColors(Color.parseColor("#8B5CF6"));
+        mSwipeRefreshLayout.setColorSchemeResources(R.color.primary_purple);
         mSwipeRefreshLayout.setOnRefreshListener(this::updateUI);
 
         mShimmerViewContainer = view.findViewById(R.id.shimmer_view_container);
@@ -153,9 +154,8 @@ public class SupplyListFragment extends Fragment {
     }
 
     private void createNewSupply() {
-        SupplyItem item_new = new SupplyItem();
-        SupplyLab.get(getActivity()).addSupply(item_new);
-        Intent intent = SupplyPagerActivity.newIntent(getActivity(), item_new.getId());
+        // Updated: Don't create in DB yet. Pass null to activity to represent "New Item"
+        Intent intent = SupplyPagerActivity.newIntent(getActivity(), null);
         startActivity(intent);
     }
 
@@ -253,10 +253,10 @@ public class SupplyListFragment extends Fragment {
             
             if (mItem.getQuantity() > 0) {
                 mStatusTextView.setText("AVAILABLE");
-                mStatusTextView.setTextColor(Color.parseColor("#10B981"));
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_success));
             } else {
                 mStatusTextView.setText("OUT OF STOCK");
-                mStatusTextView.setTextColor(Color.parseColor("#EF4444"));
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_error));
             }
 
             loadThumbnail();

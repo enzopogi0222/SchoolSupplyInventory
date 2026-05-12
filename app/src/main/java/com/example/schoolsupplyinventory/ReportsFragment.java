@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.github.mikephil.charting.charts.BarChart;
@@ -66,13 +67,13 @@ public class ReportsFragment extends Fragment {
 
             PieDataSet dataSet = new PieDataSet(entries, "");
             dataSet.setColors(new int[]{
-                    Color.parseColor("#8B5CF6"), 
-                    Color.parseColor("#10B981"), 
-                    Color.parseColor("#F59E0B"), 
-                    Color.parseColor("#3B82F6"),
-                    Color.parseColor("#A78BFA")
+                    ContextCompat.getColor(requireContext(), R.color.primary_purple), 
+                    ContextCompat.getColor(requireContext(), R.color.color_success), 
+                    ContextCompat.getColor(requireContext(), R.color.color_warning), 
+                    ContextCompat.getColor(requireContext(), R.color.color_info),
+                    ContextCompat.getColor(requireContext(), R.color.secondary_purple)
             });
-            dataSet.setValueTextColor(Color.WHITE);
+            dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
             dataSet.setValueTextSize(12f);
 
             PieData data = new PieData(dataSet);
@@ -80,9 +81,9 @@ public class ReportsFragment extends Fragment {
             mStockPieChart.getDescription().setEnabled(false);
             mStockPieChart.setHoleColor(Color.TRANSPARENT);
             mStockPieChart.setCenterText("Inventory");
-            mStockPieChart.setCenterTextColor(Color.WHITE);
-            mStockPieChart.getLegend().setTextColor(Color.WHITE);
-            mStockPieChart.setEntryLabelColor(Color.WHITE);
+            mStockPieChart.setCenterTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            mStockPieChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            mStockPieChart.setEntryLabelColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
             mStockPieChart.invalidate();
         });
     }
@@ -96,19 +97,19 @@ public class ReportsFragment extends Fragment {
         entries.add(new BarEntry(4f, 20f));
 
         BarDataSet dataSet = new BarDataSet(entries, "Items Borrowed");
-        dataSet.setColor(Color.parseColor("#8B5CF6"));
-        dataSet.setValueTextColor(Color.WHITE);
+        dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.primary_purple));
+        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
 
         BarData data = new BarData(dataSet);
         mBorrowBarChart.setData(data);
         
         final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May"};
         mBorrowBarChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(months));
-        mBorrowBarChart.getXAxis().setTextColor(Color.WHITE);
+        mBorrowBarChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
         mBorrowBarChart.getXAxis().setGranularity(1f);
-        mBorrowBarChart.getAxisLeft().setTextColor(Color.WHITE);
+        mBorrowBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
         mBorrowBarChart.getAxisRight().setEnabled(false);
-        mBorrowBarChart.getLegend().setTextColor(Color.WHITE);
+        mBorrowBarChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
         mBorrowBarChart.getDescription().setEnabled(false);
         mBorrowBarChart.invalidate();
     }

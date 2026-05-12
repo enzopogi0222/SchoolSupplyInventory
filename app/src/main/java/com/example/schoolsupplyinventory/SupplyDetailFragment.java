@@ -20,6 +20,7 @@ import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
@@ -47,9 +48,12 @@ public class SupplyDetailFragment extends Fragment {
 
     private SupplyItem mItem;
     private File mPhotoFile;
+    private boolean mIsNewItem = false;
+    
     private TextInputEditText mTitleField;
     private TextInputEditText mBrandField;
     private MaterialAutoCompleteTextView mCategoryDropdown;
+    private MaterialAutoCompleteTextView mRoomDropdown;
     private TextInputEditText mQuantityField;
     private TextInputEditText mLocationField;
     private MaterialButton mDateButton;
@@ -60,11 +64,12 @@ public class SupplyDetailFragment extends Fragment {
     private FloatingActionButton mPhotoButton;
     private ImageView mPhotoView;
     private TextView mLastUpdatedTextView;
-    private ViewGroup mContentLayout;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
-        args.putSerializable(ARG_ITEM_ID, itemId);
+        if (itemId != null) {
+            args.putSerializable(ARG_ITEM_ID, itemId);
+        }
 
         SupplyDetailFragment fragment = new SupplyDetailFragment();
         fragment.setArguments(args);
@@ -75,15 +80,29 @@ public class SupplyDetailFragment extends Fragment {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
-        UUID itemId = (UUID) getArguments().getSerializable(ARG_ITEM_ID);
-        mItem = SupplyLab.get(getActivity()).getItem(itemId);
-        mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
+        
+        UUID itemId = null;
+        if (getArguments() != null && getArguments().containsKey(ARG_ITEM_ID)) {
+            itemId = (UUID) getArguments().getSerializable(ARG_ITEM_ID);
+        }
+
+        if (itemId != null) {
+            mItem = SupplyLab.get(getActivity()).getItem(itemId);
+            mIsNewItem = false;
+        } else {
+            mItem = new SupplyItem();
+            mIsNewItem = true;
+        }
+        
+        if (mItem != null) {
+            mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        if (mItem != null) {
+        if (mItem != null && !mIsNewItem) {
             SupplyLab.get(getActivity()).updateSupply(mItem);
         }
     }
@@ -91,10 +110,14 @@ public class SupplyDetailFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+        if (mItem == null) {
+            Toast.makeText(getActivity(), "Item not found", Toast.LENGTH_SHORT).show();
+            getActivity().finish();
+            return new View(getActivity());
+        }
+
         View v = inflater.inflate(R.layout.fragment_supply_detail, container, false);
 
-        mContentLayout = v.findViewById(android.R.id.content); // Wait, this might be null. 
-        // Better just animate the main view container
         View rootLayout = v.findViewById(R.id.supply_detail_root);
         if (rootLayout != null) {
             rootLayout.startAnimation(AnimationUtils.loadAnimation(getContext(), android.R.anim.fade_in));
@@ -105,13 +128,11 @@ public class SupplyDetailFragment extends Fragment {
         mTitleField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 mItem.setName(s.toString());
                 updateLastUpdated();
             }
-
             @Override
             public void afterTextChanged(Editable s) {}
         });
@@ -121,33 +142,42 @@ public class SupplyDetailFragment extends Fragment {
         mBrandField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 mItem.setBrand(s.toString());
                 updateLastUpdated();
             }
-
             @Override
             public void afterTextChanged(Editable s) {}
         });
 
         mCategoryDropdown = v.findViewById(R.id.supply_category);
-        ArrayAdapter<Category> adapter = new ArrayAdapter<>(getActivity(),
+        ArrayAdapter<Category> catAdapter = new ArrayAdapter<>(getActivity(),
                 android.R.layout.simple_dropdown_item_1line, Category.values());
-        mCategoryDropdown.setAdapter(adapter);
+        mCategoryDropdown.setAdapter(catAdapter);
         mCategoryDropdown.setText(mItem.getCategory().toString(), false);
         mCategoryDropdown.setOnItemClickListener((parent, view, position, id) -> {
             mItem.setCategory(Category.values()[position]);
             updateLastUpdated();
         });
 
+        mRoomDropdown = v.findViewById(R.id.supply_room); // Make sure this ID exists in layout
+        if (mRoomDropdown != null) {
+            ArrayAdapter<Room> roomAdapter = new ArrayAdapter<>(getActivity(),
+                    android.R.layout.simple_dropdown_item_1line, Room.values());
+            mRoomDropdown.setAdapter(roomAdapter);
+            mRoomDropdown.setText(mItem.getRoom() != null ? mItem.getRoom().toString() : Room.ITE_OFFICE.toString(), false);
+            mRoomDropdown.setOnItemClickListener((parent, view, position, id) -> {
+                mItem.setRoom(Room.values()[position]);
+                updateLastUpdated();
+            });
+        }
+
         mQuantityField = v.findViewById(R.id.supply_quantity);
         mQuantityField.setText(String.valueOf(mItem.getQuantity()));
         mQuantityField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 try {
@@ -157,7 +187,6 @@ public class SupplyDetailFragment extends Fragment {
                 }
                 updateLastUpdated();
             }
-
             @Override
             public void afterTextChanged(Editable s) {}
         });
@@ -167,13 +196,11 @@ public class SupplyDetailFragment extends Fragment {
         mLocationField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 mItem.setLocation(s.toString());
                 updateLastUpdated();
             }
-
             @Override
             public void afterTextChanged(Editable s) {}
         });
@@ -216,6 +243,9 @@ public class SupplyDetailFragment extends Fragment {
         });
 
         mReportButton = v.findViewById(R.id.supply_report);
+        if (mIsNewItem) {
+            mReportButton.setVisibility(View.GONE);
+        }
         mReportButton.setOnClickListener(v1 -> {
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType("text/plain");
@@ -259,24 +289,57 @@ public class SupplyDetailFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
+        
+        MenuItem deleteItem = menu.findItem(R.id.delete_supply);
+        MenuItem saveItem = menu.findItem(R.id.save_supply); // Need to add this to XML
+        
+        if (mIsNewItem) {
+            if (deleteItem != null) deleteItem.setVisible(false);
+            if (saveItem != null) saveItem.setVisible(true);
+        } else {
+            if (deleteItem != null) deleteItem.setVisible(true);
+            if (saveItem != null) saveItem.setVisible(false);
+        }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        if (item.getItemId() == R.id.delete_supply) {
-            new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SchoolSupplyInventory)
-                    .setTitle("Delete Item")
-                    .setMessage("Are you sure you want to delete this item?")
-                    .setPositiveButton("Delete", (dialog, which) -> {
-                        SupplyLab.get(getActivity()).deleteSupply(mItem);
-                        mItem = null;
-                        getActivity().finish();
-                    })
-                    .setNegativeButton("Cancel", null)
-                    .show();
+        int id = item.getItemId();
+        if (id == R.id.delete_supply) {
+            confirmDelete();
+            return true;
+        } else if (id == R.id.save_supply) {
+            saveNewItem();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void saveNewItem() {
+        if (mItem.getName() == null || mItem.getName().trim().isEmpty()) {
+            Toast.makeText(getActivity(), "Please enter an item name", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
+        SupplyLab.get(getActivity()).addSupply(mItem, result -> {
+            Toast.makeText(getActivity(), "Item saved", Toast.LENGTH_SHORT).show();
+            mIsNewItem = false;
+            getActivity().invalidateOptionsMenu();
+            getActivity().finish(); // Or stay and switch mode
+        });
+    }
+
+    private void confirmDelete() {
+        new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SchoolSupplyInventory)
+                .setTitle("Delete Item")
+                .setMessage("Are you sure you want to delete this item?")
+                .setPositiveButton("Delete", (dialog, which) -> {
+                    SupplyLab.get(getActivity()).deleteSupply(mItem);
+                    mItem = null;
+                    getActivity().finish();
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
     }
 
     private void updateDate() {

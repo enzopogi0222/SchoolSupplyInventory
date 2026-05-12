@@ -39,39 +39,32 @@ public class SupplyPagerActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("Supply Details");
+            getSupportActionBar().setTitle("Item Details");
         }
         toolbar.setNavigationOnClickListener(v -> onBackPressed());
 
         mViewPager = findViewById(R.id.supply_view_pager);
         mProgressBar = findViewById(R.id.supply_pager_progress_bar);
 
-        if (mProgressBar != null) {
-            mProgressBar.setVisibility(View.VISIBLE);
+        if (itemId == null) {
+            // New Item Mode: Disable paging and just show one detail fragment
+            mProgressBar.setVisibility(View.GONE);
+            mViewPager.setAdapter(new FragmentStateAdapter(this) {
+                @NonNull @Override public Fragment createFragment(int position) {
+                    return SupplyDetailFragment.newInstance(null);
+                }
+                @Override public int getItemCount() { return 1; }
+            });
+            mViewPager.setUserInputEnabled(false);
+            return;
         }
-        mViewPager.setVisibility(View.INVISIBLE);
 
-        // Modern Depth Page Transformer
-        mViewPager.setPageTransformer((page, position) -> {
-            float absPos = Math.abs(position);
-            if (position < -1) {
-                page.setAlpha(0f);
-            } else if (position <= 1) {
-                page.setAlpha(Math.max(0.4f, 1 - absPos));
-                page.setTranslationX(page.getWidth() * -position);
-                float scale = 0.8f + (1 - absPos) * 0.2f;
-                page.setScaleX(scale);
-                page.setScaleY(scale);
-            } else {
-                page.setAlpha(0f);
-            }
-        });
+        mProgressBar.setVisibility(View.VISIBLE);
+        mViewPager.setVisibility(View.INVISIBLE);
 
         SupplyLab.get(this).getItemsAsync(items -> {
             mItems = items;
-            if (mProgressBar != null) {
-                mProgressBar.setVisibility(View.GONE);
-            }
+            mProgressBar.setVisibility(View.GONE);
             mViewPager.setVisibility(View.VISIBLE);
             
             mViewPager.setAdapter(new FragmentStateAdapter(this) {

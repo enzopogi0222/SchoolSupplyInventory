@@ -3,21 +3,22 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Modern Dark Theme Palette -->
-    <color name="background">#0F0F1A</color>
-    <color name="card_background">#1B1B2F</color>
-    <color name="primary_purple">#8B5CF6</color>
-    <color name="secondary_purple">#A78BFA</color>
-    <color name="text_primary">#FFFFFF</color>
-    <color name="text_secondary">#B3B3C3</color>
+    <!-- Modern Light Theme Palette -->
+    <color name="background">#F8F9FF</color>
+    <color name="card_background">#FFFFFF</color>
+    <color name="primary_purple">#6366F1</color>
+    <color name="secondary_purple">#818CF8</color>
+    <color name="text_primary">#1E293B</color>
+    <color name="text_secondary">#64748B</color>
 
-    <!-- Semantic Colors -->
+    <!-- Semantic Colors (Adjusted for Light Background) -->
     <color name="color_success">#10B981</color>
     <color name="color_warning">#F59E0B</color>
     <color name="color_error">#EF4444</color>
     <color name="color_info">#3B82F6</color>
 
-    <!-- Overlays and glassmorphism -->
-    <color name="glass_white">#1AFFFFFF</color>
-    <color name="glass_purple">#268B5CF6</color>
+    <!-- Overlays and soft shadows -->
+    <color name="glass_white">#80FFFFFF</color>
+    <color name="glass_purple">#126366F1</color>
+    <color name="divider">#E2E8F0</color>
 </resources>

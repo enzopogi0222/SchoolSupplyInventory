@@ -11,6 +11,7 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -72,9 +73,7 @@ public class DashboardFragment extends Fragment {
         });
 
         mAddItemButton.setOnClickListener(view -> {
-            SupplyItem item = new SupplyItem();
-            SupplyLab.get(getActivity()).addSupply(item);
-            Intent intent = SupplyPagerActivity.newIntent(getActivity(), item.getId());
+            Intent intent = SupplyPagerActivity.newIntent(getActivity(), null);
             startActivity(intent);
         });
 
@@ -337,7 +336,7 @@ public class DashboardFragment extends Fragment {
             if (count == 0) {
                 TextView emptyText = new TextView(requireContext());
                 emptyText.setText("No recent activity");
-                emptyText.setTextColor(Color.parseColor("#B3B3C3"));
+                emptyText.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
                 emptyText.setPadding(0, 32, 0, 32);
                 mRecentActivityContainer.addView(emptyText);
             }
@@ -373,7 +372,10 @@ public class DashboardFragment extends Fragment {
                 mTotalCountTextView.setText(String.valueOf(available + borrowed));
                 mAvailableCountTextView.setText(String.valueOf(available));
                 mBorrowedCountTextView.setText(String.valueOf(borrowed));
-                mReturnedCountTextView.setText("24");
+                
+                lab.getReturnedCountAsync(count -> {
+                    mReturnedCountTextView.setText(String.valueOf(count));
+                });
             });
         });
     }

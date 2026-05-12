@@ -1,18 +1,27 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.SchoolSupplyInventory" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="Base.Theme.SchoolSupplyInventory" parent="Theme.Material3.Light.NoActionBar">
         <!-- Customize your light theme here. -->
         <item name="colorPrimary">@color/primary_purple</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/glass_purple</item>
+        <item name="colorOnPrimaryContainer">@color/primary_purple</item>
+
         <item name="colorSecondary">@color/secondary_purple</item>
+        <item name="colorOnSecondary">@color/white</item>
+
         <item name="android:windowBackground">@color/background</item>
         <item name="colorSurface">@color/background</item>
         <item name="colorSurfaceContainer">@color/card_background</item>
         <item name="colorOnSurface">@color/text_primary</item>
         <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/divider</item>
 
         <!-- Navigation bar and Status bar -->
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
     </style>
 
     <style name="Theme.SchoolSupplyInventory" parent="Base.Theme.SchoolSupplyInventory" />
@@ -21,8 +30,9 @@
     <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Filled">
         <item name="cardBackgroundColor">@color/card_background</item>
         <item name="cardCornerRadius">24dp</item>
-        <item name="cardElevation">4dp</item>
-        <item name="strokeWidth">0dp</item>
+        <item name="cardElevation">2dp</item>
+        <item name="strokeWidth">1dp</item>
+        <item name="strokeColor">@color/divider</item>
     </style>
 
     <!-- Glass Style for Overlays -->
@@ -30,6 +40,7 @@
         <item name="cardBackgroundColor">@color/glass_purple</item>
         <item name="cardCornerRadius">24dp</item>
         <item name="strokeWidth">1dp</item>
-        <item name="strokeColor">@color/glass_white</item>
+        <item name="strokeColor">@color/primary_purple</item>
+        <item name="android:alpha">0.9</item>
     </style>
 </resources>
