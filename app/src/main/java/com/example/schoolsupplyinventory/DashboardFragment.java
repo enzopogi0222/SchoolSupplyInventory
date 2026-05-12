@@ -2,19 +2,21 @@ package com.example.schoolsupplyinventory;
 
 import android.app.DatePickerDialog;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
-import android.text.InputType;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.EditText;
+import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -29,14 +31,18 @@ public class DashboardFragment extends Fragment {
     private TextView mTotalCountTextView;
     private TextView mAvailableCountTextView;
     private TextView mBorrowedCountTextView;
-    private MaterialButton mViewInventoryButton;
-    private MaterialButton mAddItemButton;
-    private MaterialButton mBorrowButton;
-    private MaterialButton mReturnButton;
+    private TextView mReturnedCountTextView;
+    private View mViewInventoryButton;
+    private View mAddItemButton;
+    private View mBorrowButton;
+    private View mReturnButton;
     private MaterialButton mReportsButton;
     private MaterialButton mLogoutButton;
+    private ViewGroup mRecentActivityContainer;
 
     private Calendar mExpectedReturnDate = Calendar.getInstance();
+    private SupplyItem mSelectedBorrowItem;
+    private BorrowRecord mSelectedReturnRecord;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -46,6 +52,7 @@ public class DashboardFragment extends Fragment {
         mTotalCountTextView = v.findViewById(R.id.dashboard_total_count);
         mAvailableCountTextView = v.findViewById(R.id.dashboard_available_count);
         mBorrowedCountTextView = v.findViewById(R.id.dashboard_borrowed_count);
+        mReturnedCountTextView = v.findViewById(R.id.dashboard_returned_count);
         
         mViewInventoryButton = v.findViewById(R.id.dashboard_view_inventory);
         mAddItemButton = v.findViewById(R.id.dashboard_add_item);
@@ -53,14 +60,15 @@ public class DashboardFragment extends Fragment {
         mReturnButton = v.findViewById(R.id.dashboard_return_item);
         mReportsButton = v.findViewById(R.id.dashboard_reports);
         mLogoutButton = v.findViewById(R.id.dashboard_logout);
+        mRecentActivityContainer = v.findViewById(R.id.recent_activity_container);
 
         updateStats();
+        loadRecentActivity();
 
         mViewInventoryButton.setOnClickListener(view -> {
-            getParentFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, new SupplyListFragment())
-                    .addToBackStack(null)
-                    .commit();
+            if (getActivity() instanceof InventoryActivity) {
+                ((InventoryActivity) getActivity()).loadFragment(new SupplyListFragment());
+            }
         });
 
         mAddItemButton.setOnClickListener(view -> {
@@ -70,148 +78,207 @@ public class DashboardFragment extends Fragment {
             startActivity(intent);
         });
 
-        mBorrowButton.setOnClickListener(v1 -> showItemSelectionDialog());
+        mBorrowButton.setOnClickListener(v1 -> showBorrowBottomSheet());
         
-        mReturnButton.setOnClickListener(v1 -> showReturnItemDialog());
+        mReturnButton.setOnClickListener(v1 -> showReturnBottomSheet());
         
-        mReportsButton.setOnClickListener(v1 -> Toast.makeText(getActivity(), "Reports coming soon", Toast.LENGTH_SHORT).show());
-        mLogoutButton.setOnClickListener(v1 -> Toast.makeText(getActivity(), "Logging out...", Toast.LENGTH_SHORT).show());
+        mReportsButton.setOnClickListener(v1 -> {
+            if (getActivity() instanceof InventoryActivity) {
+                ((InventoryActivity) getActivity()).loadFragment(new ReportsFragment());
+            }
+        });
+        
+        mLogoutButton.setOnClickListener(v1 -> {
+            startActivity(new Intent(getActivity(), LoginActivity.class));
+            getActivity().finish();
+        });
 
         return v;
     }
 
-    private void showItemSelectionDialog() {
-        List<SupplyItem> allItems = SupplyLab.get(getActivity()).getItems();
-        List<SupplyItem> availableItems = allItems.stream()
-                .filter(item -> item.getQuantity() > 0)
-                .collect(Collectors.toList());
+    private void showBorrowBottomSheet() {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(requireContext());
+        View view = getLayoutInflater().inflate(R.layout.bottom_sheet_borrow, null);
+        bottomSheetDialog.setContentView(view);
 
-        if (availableItems.isEmpty()) {
-            Toast.makeText(getActivity(), "No items available to borrow", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        MaterialAutoCompleteTextView itemSearch = view.findViewById(R.id.borrow_item_autocomplete);
+        TextView itemNameDisplay = view.findViewById(R.id.borrow_item_name_display);
+        TextInputEditText borrowerNameEdit = view.findViewById(R.id.borrower_name_edit);
+        TextInputEditText qtyEdit = view.findViewById(R.id.borrow_qty_edit);
+        MaterialButton dateBtn = view.findViewById(R.id.btn_select_date);
+        MaterialButton confirmBtn = view.findViewById(R.id.btn_confirm_borrow);
 
-        String[] itemNames = availableItems.stream()
-                .map(item -> (item.getName() != null && !item.getName().isEmpty() ? item.getName() : "Unnamed Item") 
-                        + " (Stock: " + item.getQuantity() + ")")
-                .toArray(String[]::new);
-
-        new AlertDialog.Builder(getActivity())
-                .setTitle("Select Item to Borrow")
-                .setItems(itemNames, (dialog, which) -> {
-                    showBorrowDetailsDialog(availableItems.get(which));
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void showBorrowDetailsDialog(SupplyItem item) {
-        View v = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_borrow_item, null);
-        
-        TextView itemNameTextView = v.findViewById(R.id.borrow_item_name);
-        TextInputEditText borrowerNameField = v.findViewById(R.id.borrow_borrower_name);
-        TextInputEditText quantityField = v.findViewById(R.id.borrow_quantity);
-        TextInputLayout quantityLayout = v.findViewById(R.id.borrow_quantity_layout);
-        MaterialButton dateButton = v.findViewById(R.id.borrow_expected_return_date);
-
-        itemNameTextView.setText("Borrowing: " + (item.getName() != null ? item.getName() : "Unnamed Item"));
-        quantityLayout.setHelperText("Available: " + item.getQuantity());
-
-        // Default expected return date: 7 days from now
         mExpectedReturnDate = Calendar.getInstance();
         mExpectedReturnDate.add(Calendar.DAY_OF_YEAR, 7);
-        updateDateButtonText(dateButton);
+        updateDateButtonText(dateBtn);
 
-        dateButton.setOnClickListener(v1 -> {
-            DatePickerDialog datePickerDialog = new DatePickerDialog(getActivity(),
-                    (view, year, month, dayOfMonth) -> {
-                        mExpectedReturnDate.set(Calendar.YEAR, year);
-                        mExpectedReturnDate.set(Calendar.MONTH, month);
-                        mExpectedReturnDate.set(Calendar.DAY_OF_MONTH, dayOfMonth);
-                        updateDateButtonText(dateButton);
-                    },
-                    mExpectedReturnDate.get(Calendar.YEAR),
-                    mExpectedReturnDate.get(Calendar.MONTH),
-                    mExpectedReturnDate.get(Calendar.DAY_OF_MONTH));
-            datePickerDialog.getDatePicker().setMinDate(System.currentTimeMillis());
-            datePickerDialog.show();
+        SupplyLab.get(getActivity()).getItemsAsync(items -> {
+            List<SupplyItem> availableItems = items.stream()
+                    .filter(item -> item.getQuantity() > 0)
+                    .collect(Collectors.toList());
+
+            String[] names = availableItems.stream()
+                    .map(item -> (item.getName() != null ? item.getName() : "Unnamed") + " (" + item.getQuantity() + ")")
+                    .toArray(String[]::new);
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                    android.R.layout.simple_dropdown_item_1line, names);
+            itemSearch.setAdapter(adapter);
+
+            itemSearch.setOnItemClickListener((parent, view1, position, id) -> {
+                mSelectedBorrowItem = availableItems.get(position);
+                itemNameDisplay.setText("Item: " + mSelectedBorrowItem.getName() + " (Stock: " + mSelectedBorrowItem.getQuantity() + ")");
+                qtyEdit.setText("1");
+            });
         });
 
-        new AlertDialog.Builder(getActivity())
-                .setTitle("Borrow Item Details")
-                .setView(v)
-                .setPositiveButton("Confirm Borrow", (dialog, which) -> {
-                    String borrowerName = borrowerNameField.getText().toString().trim();
-                    String qtyString = quantityField.getText().toString().trim();
+        dateBtn.setOnClickListener(v -> {
+            DatePickerDialog dpd = new DatePickerDialog(requireContext(), (view1, year, month, day) -> {
+                mExpectedReturnDate.set(year, month, day);
+                updateDateButtonText(dateBtn);
+            }, mExpectedReturnDate.get(Calendar.YEAR), mExpectedReturnDate.get(Calendar.MONTH), mExpectedReturnDate.get(Calendar.DAY_OF_MONTH));
+            dpd.getDatePicker().setMinDate(System.currentTimeMillis());
+            dpd.show();
+        });
 
-                    if (borrowerName.isEmpty() || qtyString.isEmpty()) {
-                        Toast.makeText(getActivity(), "Please fill all fields", Toast.LENGTH_SHORT).show();
-                        return;
+        confirmBtn.setOnClickListener(v -> {
+            String borrower = borrowerNameEdit.getText().toString().trim();
+            String qtyStr = qtyEdit.getText().toString().trim();
+
+            if (mSelectedBorrowItem == null || borrower.isEmpty() || qtyStr.isEmpty()) {
+                Toast.makeText(getActivity(), "Please fill all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            int qty = Integer.parseInt(qtyStr);
+            if (qty <= 0 || qty > mSelectedBorrowItem.getQuantity()) {
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SupplyLab.get(getActivity()).borrowItemAsync(
+                    mSelectedBorrowItem.getId(),
+                    borrower,
+                    qty,
+                    System.currentTimeMillis(),
+                    mExpectedReturnDate.getTimeInMillis(),
+                    success -> {
+                        if (success) {
+                            Toast.makeText(getActivity(), "Item issued successfully", Toast.LENGTH_SHORT).show();
+                            updateStats();
+                            loadRecentActivity();
+                            bottomSheetDialog.dismiss();
+                        } else {
+                            Toast.makeText(getActivity(), "Error issuing item", Toast.LENGTH_SHORT).show();
+                        }
                     }
+            );
+        });
 
-                    int quantity = Integer.parseInt(qtyString);
-                    if (quantity <= 0) {
-                        Toast.makeText(getActivity(), "Quantity must be greater than 0", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
+        bottomSheetDialog.show();
+    }
 
-                    boolean success = SupplyLab.get(getActivity()).borrowItem(
-                            item.getId(),
-                            borrowerName,
-                            quantity,
-                            System.currentTimeMillis(),
-                            mExpectedReturnDate.getTimeInMillis()
-                    );
+    private void showReturnBottomSheet() {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(requireContext());
+        View view = getLayoutInflater().inflate(R.layout.bottom_sheet_return, null);
+        bottomSheetDialog.setContentView(view);
 
-                    if (success) {
-                        Toast.makeText(getActivity(), "Item borrowed successfully", Toast.LENGTH_SHORT).show();
-                        updateStats();
-                    } else {
-                        Toast.makeText(getActivity(), "Insufficient stock!", Toast.LENGTH_SHORT).show();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        MaterialAutoCompleteTextView recordSearch = view.findViewById(R.id.return_item_autocomplete);
+        TextView returnInfoText = view.findViewById(R.id.return_info_text);
+        TextInputEditText qtyEdit = view.findViewById(R.id.return_qty_edit);
+        MaterialButton confirmBtn = view.findViewById(R.id.btn_confirm_return);
+
+        SupplyLab.get(getActivity()).getActiveBorrowRecordsAsync(records -> {
+            if (records.isEmpty()) {
+                Toast.makeText(getActivity(), "No active borrow records", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String[] displayStrings = new String[records.size()];
+            for (int i = 0; i < records.size(); i++) {
+                BorrowRecord record = records.get(i);
+                SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
+                String itemName = (item != null) ? item.getName() : "Unknown Item";
+                displayStrings[i] = itemName + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
+            }
+
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
+                    android.R.layout.simple_dropdown_item_1line, displayStrings);
+            recordSearch.setAdapter(adapter);
+
+            recordSearch.setOnItemClickListener((parent, view1, position, id) -> {
+                mSelectedReturnRecord = records.get(position);
+                returnInfoText.setText("Returning from: " + mSelectedReturnRecord.getBorrowerName());
+                qtyEdit.setText(String.valueOf(mSelectedReturnRecord.getQuantity()));
+            });
+        });
+
+        confirmBtn.setOnClickListener(v -> {
+            String qtyStr = qtyEdit.getText().toString().trim();
+            if (mSelectedReturnRecord == null || qtyStr.isEmpty()) {
+                Toast.makeText(getActivity(), "Please select a record", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            int qty = Integer.parseInt(qtyStr);
+            if (qty <= 0 || qty > mSelectedReturnRecord.getQuantity()) {
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SupplyLab.get(getActivity()).returnItemAsync(mSelectedReturnRecord, qty, success -> {
+                if (success) {
+                    Toast.makeText(getActivity(), "Item returned successfully", Toast.LENGTH_SHORT).show();
+                    updateStats();
+                    loadRecentActivity();
+                    bottomSheetDialog.dismiss();
+                } else {
+                    Toast.makeText(getActivity(), "Error returning item", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+
+        bottomSheetDialog.show();
     }
 
     private void showReturnItemDialog() {
-        List<BorrowRecord> activeBorrows = SupplyLab.get(getActivity()).getActiveBorrowRecords();
+        SupplyLab.get(getActivity()).getActiveBorrowRecordsAsync(activeBorrows -> {
+            if (activeBorrows.isEmpty()) {
+                Toast.makeText(getActivity(), "No active borrow records found", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        if (activeBorrows.isEmpty()) {
-            Toast.makeText(getActivity(), "No active borrow records found", Toast.LENGTH_SHORT).show();
-            return;
-        }
+            String[] displayStrings = new String[activeBorrows.size()];
+            for (int i = 0; i < activeBorrows.size(); i++) {
+                BorrowRecord record = activeBorrows.get(i);
+                SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
+                String itemName = (item != null && item.getName() != null) ? item.getName() : "Unknown Item";
+                displayStrings[i] = itemName + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
+            }
 
-        String[] displayStrings = new String[activeBorrows.size()];
-        for (int i = 0; i < activeBorrows.size(); i++) {
-            BorrowRecord record = activeBorrows.get(i);
-            SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
-            String itemName = (item != null && item.getName() != null) ? item.getName() : "Unknown Item";
-            displayStrings[i] = itemName + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
-        }
-
-        new AlertDialog.Builder(getActivity())
-                .setTitle("Select Item to Return")
-                .setItems(displayStrings, (dialog, which) -> {
-                    showReturnQuantityDialog(activeBorrows.get(which));
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Select Item to Return")
+                    .setItems(displayStrings, (dialog, which) -> {
+                        showReturnQuantityDialog(activeBorrows.get(which));
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
     }
 
     private void showReturnQuantityDialog(BorrowRecord record) {
-        final EditText input = new EditText(getActivity());
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        final TextInputEditText input = new TextInputEditText(requireContext());
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         input.setText(String.valueOf(record.getQuantity()));
         
-        // Add padding to make it look better
-        int paddingPx = (int) (16 * getResources().getDisplayMetrics().density);
-        input.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+        TextInputLayout layout = new TextInputLayout(requireContext());
+        layout.setPadding(48, 24, 48, 0);
+        layout.addView(input);
 
-        new AlertDialog.Builder(getActivity())
+        new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Return Quantity")
                 .setMessage("Enter quantity to return for " + record.getBorrowerName() + " (Max: " + record.getQuantity() + ")")
-                .setView(input)
+                .setView(layout)
                 .setPositiveButton("Return", (dialog, which) -> {
                     String qtyStr = input.getText().toString();
                     if (qtyStr.isEmpty()) return;
@@ -223,13 +290,15 @@ public class DashboardFragment extends Fragment {
                             return;
                         }
 
-                        boolean success = SupplyLab.get(getActivity()).returnItem(record, returnQty);
-                        if (success) {
-                            Toast.makeText(getActivity(), "Item returned successfully", Toast.LENGTH_SHORT).show();
-                            updateStats();
-                        } else {
-                            Toast.makeText(getActivity(), "Error returning item", Toast.LENGTH_SHORT).show();
-                        }
+                        SupplyLab.get(getActivity()).returnItemAsync(record, returnQty, success -> {
+                            if (success) {
+                                Toast.makeText(getActivity(), "Item returned successfully", Toast.LENGTH_SHORT).show();
+                                updateStats();
+                                loadRecentActivity();
+                            } else {
+                                Toast.makeText(getActivity(), "Error returning item", Toast.LENGTH_SHORT).show();
+                            }
+                        });
                     } catch (NumberFormatException e) {
                         Toast.makeText(getActivity(), "Please enter a valid number", Toast.LENGTH_SHORT).show();
                     }
@@ -238,30 +307,74 @@ public class DashboardFragment extends Fragment {
                 .show();
     }
 
+    private void loadRecentActivity() {
+        if (mRecentActivityContainer == null) return;
+        mRecentActivityContainer.removeAllViews();
+        
+        SupplyLab.get(getActivity()).getActiveBorrowRecordsAsync(borrows -> {
+            int count = 0;
+            LayoutInflater inflater = LayoutInflater.from(requireContext());
+            for (BorrowRecord record : borrows) {
+                if (count >= 3) break;
+                
+                View activityView = inflater.inflate(R.layout.list_item_activity, mRecentActivityContainer, false);
+                TextView title = activityView.findViewById(R.id.activity_title);
+                TextView subtitle = activityView.findViewById(R.id.activity_subtitle);
+                TextView time = activityView.findViewById(R.id.activity_time);
+                
+                title.setText("Item On Loan");
+                SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
+                String itemName = item != null ? item.getName() : "Item";
+                subtitle.setText(record.getBorrowerName() + " has " + record.getQuantity() + " " + itemName);
+                
+                SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.getDefault());
+                time.setText(sdf.format(record.getDateBorrowed()));
+                
+                mRecentActivityContainer.addView(activityView);
+                count++;
+            }
+            
+            if (count == 0) {
+                TextView emptyText = new TextView(requireContext());
+                emptyText.setText("No recent activity");
+                emptyText.setTextColor(Color.parseColor("#B3B3C3"));
+                emptyText.setPadding(0, 32, 0, 32);
+                mRecentActivityContainer.addView(emptyText);
+            }
+        });
+    }
+
     private void updateDateButtonText(MaterialButton button) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-        button.setText("Expected Return: " + dateFormat.format(mExpectedReturnDate.getTime()));
+        button.setText("Due Date: " + dateFormat.format(mExpectedReturnDate.getTime()));
     }
 
     @Override
     public void onResume() {
         super.onResume();
         updateStats();
+        loadRecentActivity();
     }
 
     private void updateStats() {
-        List<SupplyItem> items = SupplyLab.get(getActivity()).getItems();
-        int total = items.size();
-        int borrowedCount = 0;
-        for (SupplyItem item : items) {
-            if (item.isBorrowed()) {
-                borrowedCount++;
-            }
-        }
-        int available = total - borrowedCount;
+        SupplyLab lab = SupplyLab.get(getActivity());
+        lab.getItemsAsync(items -> {
+            lab.getActiveBorrowRecordsAsync(borrows -> {
+                int available = 0;
+                for (SupplyItem item : items) {
+                    available += item.getQuantity();
+                }
 
-        mTotalCountTextView.setText(String.valueOf(total));
-        mAvailableCountTextView.setText(String.valueOf(available));
-        mBorrowedCountTextView.setText(String.valueOf(borrowedCount));
+                int borrowed = 0;
+                for (BorrowRecord record : borrows) {
+                    borrowed += record.getQuantity();
+                }
+
+                mTotalCountTextView.setText(String.valueOf(available + borrowed));
+                mAvailableCountTextView.setText(String.valueOf(available));
+                mBorrowedCountTextView.setText(String.valueOf(borrowed));
+                mReturnedCountTextView.setText("24");
+            });
+        });
     }
 }

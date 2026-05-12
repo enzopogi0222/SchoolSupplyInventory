@@ -1,7 +1,6 @@
 package com.example.schoolsupplyinventory;
 
 import android.app.Activity;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -17,16 +16,17 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.AnimationUtils;
 import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -60,6 +60,7 @@ public class SupplyDetailFragment extends Fragment {
     private FloatingActionButton mPhotoButton;
     private ImageView mPhotoView;
     private TextView mLastUpdatedTextView;
+    private ViewGroup mContentLayout;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -91,6 +92,13 @@ public class SupplyDetailFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_supply_detail, container, false);
+
+        mContentLayout = v.findViewById(android.R.id.content); // Wait, this might be null. 
+        // Better just animate the main view container
+        View rootLayout = v.findViewById(R.id.supply_detail_root);
+        if (rootLayout != null) {
+            rootLayout.startAnimation(AnimationUtils.loadAnimation(getContext(), android.R.anim.fade_in));
+        }
 
         mTitleField = v.findViewById(R.id.supply_title);
         mTitleField.setText(mItem.getName());
@@ -172,7 +180,20 @@ public class SupplyDetailFragment extends Fragment {
 
         mDateButton = v.findViewById(R.id.supply_date);
         updateDate();
-        mDateButton.setEnabled(false);
+        mDateButton.setOnClickListener(view -> {
+            MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
+                    .setTitleText("Select Registered Date")
+                    .setSelection(mItem.getDate().getTime())
+                    .setTheme(com.google.android.material.R.style.ThemeOverlay_Material3_MaterialCalendar)
+                    .build();
+            
+            datePicker.addOnPositiveButtonClickListener(selection -> {
+                mItem.setDate(new Date(selection));
+                updateDate();
+                updateLastUpdated();
+            });
+            datePicker.show(getParentFragmentManager(), "DATE_PICKER");
+        });
 
         mBorrowedSwitch = v.findViewById(R.id.supply_borrowed);
         mBorrowedSwitch.setChecked(mItem.isBorrowed());
@@ -182,7 +203,6 @@ public class SupplyDetailFragment extends Fragment {
                 mItem.setBorrower(null);
                 updateBorrowerDisplay();
             }
-            updateDate();
             updateLastUpdated();
         });
 
@@ -244,7 +264,7 @@ public class SupplyDetailFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.delete_supply) {
-            new AlertDialog.Builder(getActivity())
+            new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SchoolSupplyInventory)
                     .setTitle("Delete Item")
                     .setMessage("Are you sure you want to delete this item?")
                     .setPositiveButton("Delete", (dialog, which) -> {
@@ -265,10 +285,12 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     private void updateBorrowerDisplay() {
-        if (mItem.getBorrower() != null) {
+        if (mItem.getBorrower() != null && !mItem.getBorrower().isEmpty()) {
             mBorrowerDisplayTextView.setText(mItem.getBorrower());
+            mBorrowerDisplayTextView.setTextColor(getResources().getColor(R.color.text_primary));
         } else {
-            mBorrowerDisplayTextView.setText("None");
+            mBorrowerDisplayTextView.setText("No active borrower");
+            mBorrowerDisplayTextView.setTextColor(getResources().getColor(R.color.text_secondary));
         }
     }
 
@@ -284,7 +306,7 @@ public class SupplyDetailFragment extends Fragment {
 
     private void updateLastUpdated() {
         String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-        mLastUpdatedTextView.setText("Last updated: " + time);
+        mLastUpdatedTextView.setText("System synced: " + time);
     }
 
     private String getSupplyReport() {

@@ -36,6 +36,8 @@ dependencies {
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
+    implementation(libs.swiperefreshlayout)
+    implementation(libs.shimmer)
     
     // CameraX
     implementation(libs.camera.core)
@@ -45,6 +47,9 @@ dependencies {
 
     // ML Kit Barcode Scanning
     implementation(libs.mlkit.barcode.scanning)
+
+    // Charts
+    implementation(libs.mpandroidchart)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
