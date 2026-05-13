@@ -4,7 +4,6 @@ import android.database.Cursor;
 import android.database.CursorWrapper;
 import android.util.Log;
 
-import com.example.schoolsupplyinventory.Category;
 import com.example.schoolsupplyinventory.Room;
 import com.example.schoolsupplyinventory.SupplyItem;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
@@ -39,15 +38,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         item.setBorrower(borrower);
         item.setQuantity(quantity);
         item.setLocation(location);
-
-        if (categoryName != null) {
-            try {
-                item.setCategory(Category.valueOf(categoryName));
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Unknown category: " + categoryName + ", defaulting to STATIONERY");
-                item.setCategory(Category.STATIONERY);
-            }
-        }
+        item.setCategory(categoryName != null ? categoryName : "OTHER");
 
         if (roomName != null) {
             try {

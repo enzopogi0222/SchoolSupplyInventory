@@ -10,6 +10,7 @@ import android.os.Looper;
 import com.example.schoolsupplyinventory.database.SupplyBaseHelper;
 import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
@@ -163,9 +164,10 @@ public class SupplyLab {
 
     private boolean returnItem(BorrowRecord record, int returnQuantity) {
         SupplyItem item = getItem(record.getItemId());
-        if (item == null) return false;
-
-        item.setQuantity(item.getQuantity() + returnQuantity);
+        
+        if (item != null) {
+            item.setQuantity(item.getQuantity() + returnQuantity);
+        }
         
         ContentValues values = new ContentValues();
         int remainingQuantity = record.getQuantity() - returnQuantity;
@@ -179,16 +181,19 @@ public class SupplyLab {
 
         mDatabase.update(BorrowTable.NAME, values, BorrowTable.Cols.UUID + " = ?", new String[]{record.getId().toString()});
 
-        List<BorrowRecord> activeBorrows = getActiveBorrowRecordsForItem(item.getId());
-        if (activeBorrows.isEmpty()) {
-            item.setBorrowed(false);
-            item.setBorrower(null);
-        } else {
-            item.setBorrower(activeBorrows.get(0).getBorrowerName());
+        if (item != null) {
+            List<BorrowRecord> activeBorrows = getActiveBorrowRecordsForItem(item.getId());
+            if (activeBorrows.isEmpty()) {
+                item.setBorrowed(false);
+                item.setBorrower(null);
+            } else {
+                item.setBorrower(activeBorrows.get(0).getBorrowerName());
+            }
+            
+            ContentValues itemValues = getContentValues(item);
+            mDatabase.update(SupplyTable.NAME, itemValues, SupplyTable.Cols.UUID + " = ?", new String[]{item.getId().toString()});
         }
         
-        ContentValues itemValues = getContentValues(item);
-        mDatabase.update(SupplyTable.NAME, itemValues, SupplyTable.Cols.UUID + " = ?", new String[]{item.getId().toString()});
         return true;
     }
 
@@ -228,6 +233,32 @@ public class SupplyLab {
             }
             final int result = count;
             mMainHandler.post(() -> callback.onComplete(result));
+        });
+    }
+
+    public void getCategoriesAsync(Callback<List<String>> callback) {
+        mExecutor.execute(() -> {
+            List<String> categories = new ArrayList<>();
+            Cursor cursor = mDatabase.query(CategoryTable.NAME, null, null, null, null, null, CategoryTable.Cols.NAME + " ASC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    categories.add(cursor.getString(cursor.getColumnIndexOrThrow(CategoryTable.Cols.NAME)));
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(categories));
+        });
+    }
+
+    public void addCategoryAsync(String category, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            ContentValues values = new ContentValues();
+            values.put(CategoryTable.Cols.NAME, category.toUpperCase());
+            long result = mDatabase.insertWithOnConflict(CategoryTable.NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+            mMainHandler.post(() -> callback.onComplete(result != -1));
         });
     }
 
@@ -284,7 +315,7 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.TITLE, item.getName());
         values.put(SupplyTable.Cols.DATE, item.getDate().getTime());
         values.put(SupplyTable.Cols.BORROWED, item.isBorrowed() ? 1 : 0);
-        values.put(SupplyTable.Cols.CATEGORY, item.getCategory() != null ? item.getCategory().name() : null);
+        values.put(SupplyTable.Cols.CATEGORY, item.getCategory()); // Now it's a string
         values.put(SupplyTable.Cols.BRAND, item.getBrand());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
         values.put(SupplyTable.Cols.ROOM, item.getRoom() != null ? item.getRoom().name() : null);

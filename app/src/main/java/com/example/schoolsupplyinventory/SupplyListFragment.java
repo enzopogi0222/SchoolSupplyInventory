@@ -2,7 +2,6 @@ package com.example.schoolsupplyinventory;
 
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,9 +9,6 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.LruCache;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -129,7 +125,7 @@ public class SupplyListFragment extends Fragment {
                 .filter(item -> {
                     String name = item.getName() != null ? item.getName().toLowerCase() : "";
                     String brand = item.getBrand() != null ? item.getBrand().toLowerCase() : "";
-                    String category = item.getCategory() != null ? item.getCategory().name().toLowerCase() : "";
+                    String category = item.getCategory() != null ? item.getCategory().toLowerCase() : "";
                     boolean matchesQuery = name.contains(query) || brand.contains(query) || category.contains(query);
 
                     boolean matchesChip = true;
@@ -154,7 +150,6 @@ public class SupplyListFragment extends Fragment {
     }
 
     private void createNewSupply() {
-        // Updated: Don't create in DB yet. Pass null to activity to represent "New Item"
         Intent intent = SupplyPagerActivity.newIntent(getActivity(), null);
         startActivity(intent);
     }
@@ -248,7 +243,7 @@ public class SupplyListFragment extends Fragment {
             mItem = item;
             mTitleTextView.setText(mItem.getName() != null && !mItem.getName().isEmpty() ? mItem.getName() : "Unnamed Item");
             mBrandTextView.setText(mItem.getBrand() != null && !mItem.getBrand().isEmpty() ? mItem.getBrand() : "No Brand");
-            mCategoryTextView.setText(mItem.getCategory().name());
+            mCategoryTextView.setText(mItem.getCategory() != null ? mItem.getCategory() : "");
             mQuantityTextView.setText("In Stock: " + mItem.getQuantity());
             
             if (mItem.getQuantity() > 0) {

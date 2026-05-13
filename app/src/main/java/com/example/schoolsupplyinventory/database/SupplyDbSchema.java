@@ -42,4 +42,11 @@ public class SupplyDbSchema {
             public static final String STATUS = "status"; // "Borrowed" or "Returned"
         }
     }
+
+    public static final class CategoryTable {
+        public static final String NAME = "categories";
+        public static final class Cols {
+            public static final String NAME = "name";
+        }
+    }
 }

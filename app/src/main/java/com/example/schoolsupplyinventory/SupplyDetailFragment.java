@@ -28,6 +28,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.datepicker.MaterialDatePicker;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -35,6 +36,7 @@ import com.google.android.material.textfield.TextInputEditText;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +47,7 @@ public class SupplyDetailFragment extends Fragment {
     private static final String ARG_ITEM_ID = "item_id";
     private static final int REQUEST_ID_SCAN = 2;
     private static final int REQUEST_PHOTO = 3;
+    private static final String ADD_NEW_CATEGORY = "+ ADD NEW CATEGORY";
 
     private SupplyItem mItem;
     private File mPhotoFile;
@@ -152,16 +155,9 @@ public class SupplyDetailFragment extends Fragment {
         });
 
         mCategoryDropdown = v.findViewById(R.id.supply_category);
-        ArrayAdapter<Category> catAdapter = new ArrayAdapter<>(getActivity(),
-                android.R.layout.simple_dropdown_item_1line, Category.values());
-        mCategoryDropdown.setAdapter(catAdapter);
-        mCategoryDropdown.setText(mItem.getCategory().toString(), false);
-        mCategoryDropdown.setOnItemClickListener((parent, view, position, id) -> {
-            mItem.setCategory(Category.values()[position]);
-            updateLastUpdated();
-        });
+        updateCategoryList();
 
-        mRoomDropdown = v.findViewById(R.id.supply_room); // Make sure this ID exists in layout
+        mRoomDropdown = v.findViewById(R.id.supply_room);
         if (mRoomDropdown != null) {
             ArrayAdapter<Room> roomAdapter = new ArrayAdapter<>(getActivity(),
                     android.R.layout.simple_dropdown_item_1line, Room.values());
@@ -285,13 +281,64 @@ public class SupplyDetailFragment extends Fragment {
         return v;
     }
 
+    private void updateCategoryList() {
+        SupplyLab.get(getActivity()).getCategoriesAsync(categories -> {
+            if (!isAdded()) return;
+            
+            List<String> list = new ArrayList<>(categories);
+            list.add(ADD_NEW_CATEGORY);
+            
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(),
+                    android.R.layout.simple_dropdown_item_1line, list);
+            mCategoryDropdown.setAdapter(adapter);
+            mCategoryDropdown.setText(mItem.getCategory(), false);
+            
+            mCategoryDropdown.setOnItemClickListener((parent, view, position, id) -> {
+                String selection = adapter.getItem(position);
+                if (ADD_NEW_CATEGORY.equals(selection)) {
+                    showAddCategoryDialog();
+                } else {
+                    mItem.setCategory(selection);
+                    updateLastUpdated();
+                }
+            });
+        });
+    }
+
+    private void showAddCategoryDialog() {
+        final TextInputEditText input = new TextInputEditText(requireContext());
+        input.setHint("Category Name");
+        input.setSingleLine(true);
+        
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Add New Category")
+                .setView(input)
+                .setPositiveButton("Add", (dialog, which) -> {
+                    String newCat = input.getText().toString().trim().toUpperCase();
+                    if (!newCat.isEmpty()) {
+                        SupplyLab.get(getActivity()).addCategoryAsync(newCat, success -> {
+                            if (success) {
+                                mItem.setCategory(newCat);
+                                updateCategoryList();
+                            } else {
+                                Toast.makeText(getActivity(), "Category already exists", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
+                })
+                .setNegativeButton("Cancel", (dialog, which) -> {
+                    mCategoryDropdown.setText(mItem.getCategory(), false);
+                })
+                .show();
+    }
+
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
         
         MenuItem deleteItem = menu.findItem(R.id.delete_supply);
-        MenuItem saveItem = menu.findItem(R.id.save_supply); // Need to add this to XML
+        MenuItem saveItem = menu.findItem(R.id.save_supply);
         
         if (mIsNewItem) {
             if (deleteItem != null) deleteItem.setVisible(false);
@@ -325,7 +372,7 @@ public class SupplyDetailFragment extends Fragment {
             Toast.makeText(getActivity(), "Item saved", Toast.LENGTH_SHORT).show();
             mIsNewItem = false;
             getActivity().invalidateOptionsMenu();
-            getActivity().finish(); // Or stay and switch mode
+            getActivity().finish();
         });
     }
 

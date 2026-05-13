@@ -9,7 +9,7 @@ public class SupplyItem {
     private String mName;
     private Date mDate;
     private boolean mBorrowed;
-    private Category mCategory;
+    private String mCategory; // Changed to String for dynamic categories
     private String mBrand;
     private String mBorrower;
     private String mPhotoFilename;
@@ -24,7 +24,7 @@ public class SupplyItem {
     public SupplyItem(UUID id) {
         mId = id;
         mDate = new Date();
-        mCategory = Category.STATIONERY;
+        mCategory = "STATIONERY";
         mRoom = Room.ITE_OFFICE;
         mQuantity = 1;
         mLocation = "";
@@ -64,11 +64,11 @@ public class SupplyItem {
         mBorrowed = borrowed;
     }
 
-    public Category getCategory() {
+    public String getCategory() {
         return mCategory;
     }
 
-    public void setCategory(Category category) {
+    public void setCategory(String category) {
         mCategory = category;
     }
 

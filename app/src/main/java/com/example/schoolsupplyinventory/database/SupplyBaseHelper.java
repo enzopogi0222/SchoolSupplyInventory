@@ -1,15 +1,17 @@
 package com.example.schoolsupplyinventory.database;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 8;
+    private static final int VERSION = 9;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -40,6 +42,7 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         );
 
         createBorrowTable(db);
+        createCategoryTable(db);
     }
 
     private void createBorrowTable(SQLiteDatabase db) {
@@ -54,6 +57,20 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 BorrowTable.Cols.ACTUAL_RETURN_DATE + ", " +
                 BorrowTable.Cols.STATUS + ")"
         );
+    }
+
+    private void createCategoryTable(SQLiteDatabase db) {
+        db.execSQL("create table " + CategoryTable.NAME + "(" +
+                " _id integer primary key autoincrement, " +
+                CategoryTable.Cols.NAME + " UNIQUE)"
+        );
+        // Initial categories
+        String[] initials = {"STATIONERY", "ELECTRONICS", "BOOKS"};
+        for (String cat : initials) {
+            ContentValues values = new ContentValues();
+            values.put(CategoryTable.Cols.NAME, cat);
+            db.insert(CategoryTable.NAME, null, values);
+        }
     }
 
     @Override
@@ -84,6 +101,9 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 8) {
             createBorrowTable(db);
+        }
+        if (oldVersion < 9) {
+            createCategoryTable(db);
         }
     }
 }

@@ -1,12 +1,29 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
-    <style name="Base.Theme.SchoolSupplyInventory" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your dark theme here. -->
+    <!-- Base application theme. Force Light version even in Night mode to satisfy user request -->
+    <style name="Base.Theme.SchoolSupplyInventory" parent="Theme.Material3.Light.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+
+        <!-- Use the same light colors as the main theme -->
         <item name="colorPrimary">@color/primary_purple</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorPrimaryContainer">@color/glass_purple</item>
+        <item name="colorOnPrimaryContainer">@color/primary_purple</item>
+
         <item name="colorSecondary">@color/secondary_purple</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <item name="android:windowBackground">@color/background</item>
+        <item name="colorSurface">@color/background</item>
+        <item name="colorSurfaceContainer">@color/card_background</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/divider</item>
 
         <!-- Navigation bar and Status bar -->
         <item name="android:navigationBarColor">@color/background</item>
         <item name="android:statusBarColor">@color/background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
     </style>
 </resources>

@@ -56,7 +56,7 @@ public class ReportsFragment extends Fragment {
             
             Map<String, Integer> categoryCount = new HashMap<>();
             for (SupplyItem item : items) {
-                String cat = item.getCategory() != null ? item.getCategory().name() : "Other";
+                String cat = item.getCategory() != null ? item.getCategory() : "Other";
                 categoryCount.put(cat, categoryCount.getOrDefault(cat, 0) + item.getQuantity());
             }
 
