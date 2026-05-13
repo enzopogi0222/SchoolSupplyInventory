@@ -197,18 +197,29 @@ public class DashboardFragment extends Fragment {
                     .filter(item -> item.getQuantity() > 0 && item.isBorrowable())
                     .collect(Collectors.toList());
 
-            String[] names = availableItems.stream()
-                    .map(item -> (item.getName() != null ? item.getName() : "Unnamed") + " (" + item.getQuantity() + ")")
-                    .toArray(String[]::new);
+            List<String> names = availableItems.stream()
+                    .map(item -> {
+                        String name = item.getName() != null ? item.getName() : "Unnamed";
+                        String brand = item.getBrand() != null && !item.getBrand().isEmpty() ? " - " + item.getBrand() : "";
+                        String tag = item.getPropertyTag() != null && !item.getPropertyTag().isEmpty() ? " [" + item.getPropertyTag() + "]" : "";
+                        return name + brand + tag + " (" + item.getQuantity() + ")";
+                    })
+                    .collect(Collectors.toList());
 
             ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
                     android.R.layout.simple_dropdown_item_1line, names);
             itemSearch.setAdapter(adapter);
 
             itemSearch.setOnItemClickListener((parent, view1, position, id) -> {
-                mSelectedBorrowItem = availableItems.get(position);
-                itemNameDisplay.setText("Item: " + mSelectedBorrowItem.getName() + " (Stock: " + mSelectedBorrowItem.getQuantity() + ")");
-                qtyEdit.setText("1");
+                String selectedValue = (String) parent.getItemAtPosition(position);
+                int index = names.indexOf(selectedValue);
+                if (index != -1) {
+                    mSelectedBorrowItem = availableItems.get(index);
+                    String brandInfo = mSelectedBorrowItem.getBrand() != null && !mSelectedBorrowItem.getBrand().isEmpty() ? 
+                            " - " + mSelectedBorrowItem.getBrand() : "";
+                    itemNameDisplay.setText("Item: " + mSelectedBorrowItem.getName() + brandInfo + " (Stock: " + mSelectedBorrowItem.getQuantity() + ")");
+                    qtyEdit.setText("1");
+                }
             });
         });
 
@@ -289,22 +300,28 @@ public class DashboardFragment extends Fragment {
                 return;
             }
 
-            String[] displayStrings = new String[records.size()];
-            for (int i = 0; i < records.size(); i++) {
-                BorrowRecord record = records.get(i);
-                SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
-                String itemName = (item != null) ? item.getName() : "Unknown Item";
-                displayStrings[i] = itemName + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
-            }
+            List<String> displayStrings = records.stream()
+                    .map(record -> {
+                        SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
+                        String itemName = (item != null) ? item.getName() : "Unknown Item";
+                        String brand = (item != null && item.getBrand() != null && !item.getBrand().isEmpty()) ? " - " + item.getBrand() : "";
+                        String tag = (item != null && item.getPropertyTag() != null && !item.getPropertyTag().isEmpty()) ? " [" + item.getPropertyTag() + "]" : "";
+                        return itemName + brand + tag + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
+                    })
+                    .collect(Collectors.toList());
 
             ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(),
                     android.R.layout.simple_dropdown_item_1line, displayStrings);
             recordSearch.setAdapter(adapter);
 
             recordSearch.setOnItemClickListener((parent, view1, position, id) -> {
-                mSelectedReturnRecord = records.get(position);
-                returnInfoText.setText("Returning from: " + mSelectedReturnRecord.getBorrowerName());
-                qtyEdit.setText(String.valueOf(mSelectedReturnRecord.getQuantity()));
+                String selectedValue = (String) parent.getItemAtPosition(position);
+                int index = displayStrings.indexOf(selectedValue);
+                if (index != -1) {
+                    mSelectedReturnRecord = records.get(index);
+                    returnInfoText.setText("Returning from: " + mSelectedReturnRecord.getBorrowerName());
+                    qtyEdit.setText(String.valueOf(mSelectedReturnRecord.getQuantity()));
+                }
             });
         });
 
@@ -348,7 +365,9 @@ public class DashboardFragment extends Fragment {
                 BorrowRecord record = activeBorrows.get(i);
                 SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
                 String itemName = (item != null && item.getName() != null) ? item.getName() : "Unknown Item";
-                displayStrings[i] = itemName + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
+                String brand = (item != null && item.getBrand() != null && !item.getBrand().isEmpty()) ? " - " + item.getBrand() : "";
+                String tag = (item != null && item.getPropertyTag() != null && !item.getPropertyTag().isEmpty()) ? " [" + item.getPropertyTag() + "]" : "";
+                displayStrings[i] = itemName + brand + tag + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
             }
 
             new MaterialAlertDialogBuilder(requireContext())
@@ -437,7 +456,8 @@ public class DashboardFragment extends Fragment {
 
                 SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
                 String itemName = item != null ? item.getName() : "Item";
-                subtitle.setText(record.getBorrowerName() + " has " + record.getQuantity() + " " + itemName);
+                String brand = (item != null && item.getBrand() != null && !item.getBrand().isEmpty()) ? " (" + item.getBrand() + ")" : "";
+                subtitle.setText(record.getBorrowerName() + " has " + record.getQuantity() + " " + itemName + brand);
                 
                 SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.getDefault());
                 time.setText(sdf.format(record.getDateBorrowed()));
