@@ -15,13 +15,14 @@ public class SupplyItem {
     private String mSupplier;
     private String mBorrower;
     private String mPhotoFilename;
-    private String mRoom; // Storage location (Building/Room)
+    private String mRoom; // Storage location (Building/Room/Department)
     private int mQuantity;
     private String mUnit;
     private String mLocation; // Specific storage location (Shelf/Cabinet)
     private String mBarcode;
     private String mPropertyTag;
     private boolean mIsBorrowable;
+    private boolean mIsDamaged;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -38,6 +39,7 @@ public class SupplyItem {
         mPropertyTag = "";
         mBarcode = "";
         mIsBorrowable = true;
+        mIsDamaged = false;
     }
 
     public UUID getId() {
@@ -166,5 +168,13 @@ public class SupplyItem {
 
     public void setPropertyTag(String propertyTag) {
         mPropertyTag = propertyTag;
+    }
+
+    public boolean isDamaged() {
+        return mIsDamaged;
+    }
+
+    public void setDamaged(boolean damaged) {
+        mIsDamaged = damaged;
     }
 }

@@ -124,22 +124,24 @@ public class SupplyListFragment extends Fragment {
         List<SupplyItem> filteredList = mAllItems.stream()
                 .filter(item -> {
                     String name = item.getName() != null ? item.getName().toLowerCase() : "";
-                    String supplier = item.getSupplier() != null ? item.getSupplier().toLowerCase() : "";
                     String category = item.getCategory() != null ? item.getCategory().toLowerCase() : "";
-                    String room = item.getRoom() != null ? item.getRoom().toLowerCase() : "";
                     String barcode = item.getBarcode() != null ? item.getBarcode().toLowerCase() : "";
+                    String department = item.getRoom() != null ? item.getRoom().toLowerCase() : "";
+                    String supplier = item.getSupplier() != null ? item.getSupplier().toLowerCase() : "";
                     
                     boolean matchesQuery = name.contains(query) || 
-                                          supplier.contains(query) ||
                                           category.contains(query) || 
-                                          room.contains(query) || 
-                                          barcode.contains(query);
+                                          barcode.contains(query) ||
+                                          department.contains(query) ||
+                                          supplier.contains(query);
 
                     boolean matchesChip = true;
                     if (checkedId == R.id.chip_available) {
-                        matchesChip = item.getQuantity() > 0;
+                        matchesChip = item.getQuantity() > 0 && !item.isDamaged();
                     } else if (checkedId == R.id.chip_borrowed) {
                         matchesChip = item.isBorrowed();
+                    } else if (checkedId == R.id.chip_damaged) {
+                        matchesChip = item.isDamaged();
                     } else if (checkedId == R.id.chip_low_stock) {
                         matchesChip = item.getQuantity() > 0 && item.getQuantity() <= 5;
                     }
@@ -255,7 +257,10 @@ public class SupplyListFragment extends Fragment {
             mRoomTextView.setText("• " + (mItem.getRoom() != null ? mItem.getRoom() : "No Room"));
             mQuantityTextView.setText("Stock: " + mItem.getQuantity() + " " + (mItem.getUnit() != null ? mItem.getUnit() : "pcs"));
             
-            if (mItem.isBorrowed()) {
+            if (mItem.isDamaged()) {
+                mStatusTextView.setText("DAMAGED");
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_error));
+            } else if (mItem.isBorrowed()) {
                 mStatusTextView.setText("BORROWED");
                 mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_warning));
             } else if (mItem.getQuantity() > 0) {

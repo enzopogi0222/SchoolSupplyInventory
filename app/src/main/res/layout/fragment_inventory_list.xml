@@ -48,7 +48,7 @@
                     android:layout_height="wrap_content"
                     android:paddingTop="14dp"
                     android:paddingBottom="14dp"
-                    android:hint="Search supplies..."
+                    android:hint="Search name, category, barcode, dept..."
                     android:textColor="@color/text_primary"
                     android:textColorHint="@color/text_secondary"
                     android:inputType="text" />
@@ -94,6 +94,16 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Borrowed"
+                        app:chipBackgroundColor="@color/glass_purple"
+                        app:chipStrokeWidth="0dp"
+                        android:textColor="@color/text_primary" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_damaged"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Damaged"
                         app:chipBackgroundColor="@color/glass_purple"
                         app:chipStrokeWidth="0dp"
                         android:textColor="@color/text_primary" />
