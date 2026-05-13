@@ -11,6 +11,7 @@ import com.example.schoolsupplyinventory.database.SupplyBaseHelper;
 import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
@@ -219,6 +220,23 @@ public class SupplyLab {
         return records;
     }
 
+    public void getAllBorrowRecordsAsync(Callback<List<BorrowRecord>> callback) {
+        mExecutor.execute(() -> {
+            List<BorrowRecord> records = new ArrayList<>();
+            Cursor cursor = mDatabase.query(BorrowTable.NAME, null, null, null, null, null, BorrowTable.Cols.DATE_BORROWED + " ASC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    records.add(getBorrowRecordFromCursor(cursor));
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(records));
+        });
+    }
+
     public void getReturnedCountAsync(Callback<Integer> callback) {
         mExecutor.execute(() -> {
             int count = 0;
@@ -258,6 +276,32 @@ public class SupplyLab {
             ContentValues values = new ContentValues();
             values.put(CategoryTable.Cols.NAME, category.toUpperCase());
             long result = mDatabase.insertWithOnConflict(CategoryTable.NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+            mMainHandler.post(() -> callback.onComplete(result != -1));
+        });
+    }
+
+    public void getRoomsAsync(Callback<List<String>> callback) {
+        mExecutor.execute(() -> {
+            List<String> rooms = new ArrayList<>();
+            Cursor cursor = mDatabase.query(RoomTable.NAME, null, null, null, null, null, RoomTable.Cols.NAME + " ASC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    rooms.add(cursor.getString(cursor.getColumnIndexOrThrow(RoomTable.Cols.NAME)));
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(rooms));
+        });
+    }
+
+    public void addRoomAsync(String room, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            ContentValues values = new ContentValues();
+            values.put(RoomTable.Cols.NAME, room.toUpperCase());
+            long result = mDatabase.insertWithOnConflict(RoomTable.NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE);
             mMainHandler.post(() -> callback.onComplete(result != -1));
         });
     }
@@ -315,12 +359,13 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.TITLE, item.getName());
         values.put(SupplyTable.Cols.DATE, item.getDate().getTime());
         values.put(SupplyTable.Cols.BORROWED, item.isBorrowed() ? 1 : 0);
-        values.put(SupplyTable.Cols.CATEGORY, item.getCategory()); // Now it's a string
+        values.put(SupplyTable.Cols.CATEGORY, item.getCategory());
         values.put(SupplyTable.Cols.BRAND, item.getBrand());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
-        values.put(SupplyTable.Cols.ROOM, item.getRoom() != null ? item.getRoom().name() : null);
+        values.put(SupplyTable.Cols.ROOM, item.getRoom());
         values.put(SupplyTable.Cols.QUANTITY, item.getQuantity());
         values.put(SupplyTable.Cols.LOCATION, item.getLocation());
+        values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
         return values;
     }
 

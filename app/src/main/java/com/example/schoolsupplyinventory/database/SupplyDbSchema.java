@@ -15,6 +15,7 @@ public class SupplyDbSchema {
             public static final String ROOM = "room";
             public static final String QUANTITY = "quantity";
             public static final String LOCATION = "location";
+            public static final String PROPERTY_TAG = "property_tag"; // Added for asset tracking
         }
     }
 
@@ -45,6 +46,13 @@ public class SupplyDbSchema {
 
     public static final class CategoryTable {
         public static final String NAME = "categories";
+        public static final class Cols {
+            public static final String NAME = "name";
+        }
+    }
+    
+    public static final class RoomTable { // Added for dynamic classrooms
+        public static final String NAME = "rooms";
         public static final class Cols {
             public static final String NAME = "name";
         }

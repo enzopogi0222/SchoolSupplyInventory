@@ -9,13 +9,14 @@ public class SupplyItem {
     private String mName;
     private Date mDate;
     private boolean mBorrowed;
-    private String mCategory; // Changed to String for dynamic categories
+    private String mCategory;
     private String mBrand;
     private String mBorrower;
     private String mPhotoFilename;
-    private Room mRoom;
+    private String mRoom; // Changed to String for dynamic room/classroom assignment
     private int mQuantity;
     private String mLocation;
+    private String mPropertyTag; // Added for tracking fixed assets like Aircon, TV
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -25,9 +26,10 @@ public class SupplyItem {
         mId = id;
         mDate = new Date();
         mCategory = "STATIONERY";
-        mRoom = Room.ITE_OFFICE;
+        mRoom = "ITE OFFICE";
         mQuantity = 1;
         mLocation = "";
+        mPropertyTag = "";
     }
 
     public SupplyItem(String name, boolean isBorrowed) {
@@ -92,11 +94,11 @@ public class SupplyItem {
         return "IMG_" + getId().toString() + ".jpg";
     }
 
-    public Room getRoom() {
+    public String getRoom() {
         return mRoom;
     }
 
-    public void setRoom(Room room) {
+    public void setRoom(String room) {
         mRoom = room;
     }
 
@@ -114,5 +116,13 @@ public class SupplyItem {
 
     public void setLocation(String location) {
         mLocation = location;
+    }
+
+    public String getPropertyTag() {
+        return mPropertyTag;
+    }
+
+    public void setPropertyTag(String propertyTag) {
+        mPropertyTag = propertyTag;
     }
 }

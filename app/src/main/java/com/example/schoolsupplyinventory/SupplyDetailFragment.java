@@ -23,6 +23,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
@@ -47,7 +48,7 @@ public class SupplyDetailFragment extends Fragment {
     private static final String ARG_ITEM_ID = "item_id";
     private static final int REQUEST_ID_SCAN = 2;
     private static final int REQUEST_PHOTO = 3;
-    private static final String ADD_NEW_CATEGORY = "+ ADD NEW CATEGORY";
+    private static final String ADD_NEW_OPTION = "+ ADD NEW";
 
     private SupplyItem mItem;
     private File mPhotoFile;
@@ -55,6 +56,7 @@ public class SupplyDetailFragment extends Fragment {
     
     private TextInputEditText mTitleField;
     private TextInputEditText mBrandField;
+    private TextInputEditText mPropertyTagField;
     private MaterialAutoCompleteTextView mCategoryDropdown;
     private MaterialAutoCompleteTextView mRoomDropdown;
     private TextInputEditText mQuantityField;
@@ -140,6 +142,20 @@ public class SupplyDetailFragment extends Fragment {
             public void afterTextChanged(Editable s) {}
         });
 
+        mPropertyTagField = v.findViewById(R.id.supply_property_tag);
+        mPropertyTagField.setText(mItem.getPropertyTag());
+        mPropertyTagField.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                mItem.setPropertyTag(s.toString());
+                updateLastUpdated();
+            }
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
         mBrandField = v.findViewById(R.id.supply_brand);
         mBrandField.setText(mItem.getBrand());
         mBrandField.addTextChangedListener(new TextWatcher() {
@@ -158,16 +174,7 @@ public class SupplyDetailFragment extends Fragment {
         updateCategoryList();
 
         mRoomDropdown = v.findViewById(R.id.supply_room);
-        if (mRoomDropdown != null) {
-            ArrayAdapter<Room> roomAdapter = new ArrayAdapter<>(getActivity(),
-                    android.R.layout.simple_dropdown_item_1line, Room.values());
-            mRoomDropdown.setAdapter(roomAdapter);
-            mRoomDropdown.setText(mItem.getRoom() != null ? mItem.getRoom().toString() : Room.ITE_OFFICE.toString(), false);
-            mRoomDropdown.setOnItemClickListener((parent, view, position, id) -> {
-                mItem.setRoom(Room.values()[position]);
-                updateLastUpdated();
-            });
-        }
+        updateRoomList();
 
         mQuantityField = v.findViewById(R.id.supply_quantity);
         mQuantityField.setText(String.valueOf(mItem.getQuantity()));
@@ -246,7 +253,7 @@ public class SupplyDetailFragment extends Fragment {
             Intent i = new Intent(Intent.ACTION_SEND);
             i.setType("text/plain");
             i.putExtra(Intent.EXTRA_TEXT, getSupplyReport());
-            i.putExtra(Intent.EXTRA_SUBJECT, "School Supply Status Report");
+            i.putExtra(Intent.EXTRA_SUBJECT, "Asset Tracking Report: " + mItem.getName());
             i = Intent.createChooser(i, "Send report via:");
             startActivity(i);
         });
@@ -286,7 +293,7 @@ public class SupplyDetailFragment extends Fragment {
             if (!isAdded()) return;
             
             List<String> list = new ArrayList<>(categories);
-            list.add(ADD_NEW_CATEGORY);
+            list.add(ADD_NEW_OPTION);
             
             ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(),
                     android.R.layout.simple_dropdown_item_1line, list);
@@ -295,8 +302,17 @@ public class SupplyDetailFragment extends Fragment {
             
             mCategoryDropdown.setOnItemClickListener((parent, view, position, id) -> {
                 String selection = adapter.getItem(position);
-                if (ADD_NEW_CATEGORY.equals(selection)) {
-                    showAddCategoryDialog();
+                if (ADD_NEW_OPTION.equals(selection)) {
+                    showAddOptionDialog("Category", (newOption) -> {
+                        SupplyLab.get(getActivity()).addCategoryAsync(newOption, success -> {
+                            if (success) {
+                                mItem.setCategory(newOption);
+                                updateCategoryList();
+                            } else {
+                                Toast.makeText(getActivity(), "Category already exists", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    });
                 } else {
                     mItem.setCategory(selection);
                     updateLastUpdated();
@@ -305,29 +321,63 @@ public class SupplyDetailFragment extends Fragment {
         });
     }
 
-    private void showAddCategoryDialog() {
+    private void updateRoomList() {
+        SupplyLab.get(getActivity()).getRoomsAsync(rooms -> {
+            if (!isAdded()) return;
+            
+            List<String> list = new ArrayList<>(rooms);
+            list.add(ADD_NEW_OPTION);
+            
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(),
+                    android.R.layout.simple_dropdown_item_1line, list);
+            mRoomDropdown.setAdapter(adapter);
+            mRoomDropdown.setText(mItem.getRoom(), false);
+            
+            mRoomDropdown.setOnItemClickListener((parent, view, position, id) -> {
+                String selection = adapter.getItem(position);
+                if (ADD_NEW_OPTION.equals(selection)) {
+                    showAddOptionDialog("Room/Classroom", (newOption) -> {
+                        SupplyLab.get(getActivity()).addRoomAsync(newOption, success -> {
+                            if (success) {
+                                mItem.setRoom(newOption);
+                                updateRoomList();
+                            } else {
+                                Toast.makeText(getActivity(), "Room already exists", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    });
+                } else {
+                    mItem.setRoom(selection);
+                    updateLastUpdated();
+                }
+            });
+        });
+    }
+
+    private interface OnOptionAdded {
+        void onAdded(String option);
+    }
+
+    private void showAddOptionDialog(String title, OnOptionAdded callback) {
         final TextInputEditText input = new TextInputEditText(requireContext());
-        input.setHint("Category Name");
+        input.setHint(title + " Name");
         input.setSingleLine(true);
         
         new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Add New Category")
+                .setTitle("Add New " + title)
                 .setView(input)
                 .setPositiveButton("Add", (dialog, which) -> {
-                    String newCat = input.getText().toString().trim().toUpperCase();
-                    if (!newCat.isEmpty()) {
-                        SupplyLab.get(getActivity()).addCategoryAsync(newCat, success -> {
-                            if (success) {
-                                mItem.setCategory(newCat);
-                                updateCategoryList();
-                            } else {
-                                Toast.makeText(getActivity(), "Category already exists", Toast.LENGTH_SHORT).show();
-                            }
-                        });
+                    String newOption = input.getText().toString().trim().toUpperCase();
+                    if (!newOption.isEmpty()) {
+                        callback.onAdded(newOption);
                     }
                 })
                 .setNegativeButton("Cancel", (dialog, which) -> {
-                    mCategoryDropdown.setText(mItem.getCategory(), false);
+                    if (title.equals("Category")) {
+                        mCategoryDropdown.setText(mItem.getCategory(), false);
+                    } else {
+                        mRoomDropdown.setText(mItem.getRoom(), false);
+                    }
                 })
                 .show();
     }
@@ -369,7 +419,7 @@ public class SupplyDetailFragment extends Fragment {
         }
         
         SupplyLab.get(getActivity()).addSupply(mItem, result -> {
-            Toast.makeText(getActivity(), "Item saved", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getActivity(), "Asset saved successfully", Toast.LENGTH_SHORT).show();
             mIsNewItem = false;
             getActivity().invalidateOptionsMenu();
             getActivity().finish();
@@ -378,8 +428,8 @@ public class SupplyDetailFragment extends Fragment {
 
     private void confirmDelete() {
         new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SchoolSupplyInventory)
-                .setTitle("Delete Item")
-                .setMessage("Are you sure you want to delete this item?")
+                .setTitle("Delete Asset")
+                .setMessage("Are you sure you want to delete this asset?")
                 .setPositiveButton("Delete", (dialog, which) -> {
                     SupplyLab.get(getActivity()).deleteSupply(mItem);
                     mItem = null;
@@ -391,16 +441,16 @@ public class SupplyDetailFragment extends Fragment {
 
     private void updateDate() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-        mDateButton.setText("Date: " + dateFormat.format(mItem.getDate()));
+        mDateButton.setText("Registered: " + dateFormat.format(mItem.getDate()));
     }
 
     private void updateBorrowerDisplay() {
         if (mItem.getBorrower() != null && !mItem.getBorrower().isEmpty()) {
             mBorrowerDisplayTextView.setText(mItem.getBorrower());
-            mBorrowerDisplayTextView.setTextColor(getResources().getColor(R.color.text_primary));
+            mBorrowerDisplayTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
         } else {
-            mBorrowerDisplayTextView.setText("No active borrower");
-            mBorrowerDisplayTextView.setTextColor(getResources().getColor(R.color.text_secondary));
+            mBorrowerDisplayTextView.setText("In Storage / Assigned");
+            mBorrowerDisplayTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
         }
     }
 
@@ -416,13 +466,20 @@ public class SupplyDetailFragment extends Fragment {
 
     private void updateLastUpdated() {
         String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-        mLastUpdatedTextView.setText("System synced: " + time);
+        mLastUpdatedTextView.setText("Last change synced: " + time);
     }
 
     private String getSupplyReport() {
-        String borrowedString = mItem.isBorrowed() ?
-            "Status: Borrowed by " + mItem.getBorrower() : "Status: Available";
-        return "Item: " + mItem.getName() + "\nBrand: " + mItem.getBrand() + "\n" + borrowedString;
+        StringBuilder report = new StringBuilder();
+        report.append("ASSET REPORT\n");
+        report.append("----------\n");
+        report.append("Item: ").append(mItem.getName()).append("\n");
+        report.append("Tag/Serial: ").append(mItem.getPropertyTag()).append("\n");
+        report.append("Brand: ").append(mItem.getBrand()).append("\n");
+        report.append("Assigned Room: ").append(mItem.getRoom()).append("\n");
+        report.append("Status: ").append(mItem.isBorrowed() ? "Borrowed by " + mItem.getBorrower() : "Assigned/Available").append("\n");
+        report.append("Location: ").append(mItem.getLocation());
+        return report.toString();
     }
 
     @Override

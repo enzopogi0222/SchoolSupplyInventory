@@ -126,7 +126,14 @@ public class SupplyListFragment extends Fragment {
                     String name = item.getName() != null ? item.getName().toLowerCase() : "";
                     String brand = item.getBrand() != null ? item.getBrand().toLowerCase() : "";
                     String category = item.getCategory() != null ? item.getCategory().toLowerCase() : "";
-                    boolean matchesQuery = name.contains(query) || brand.contains(query) || category.contains(query);
+                    String room = item.getRoom() != null ? item.getRoom().toLowerCase() : "";
+                    String tag = item.getPropertyTag() != null ? item.getPropertyTag().toLowerCase() : "";
+                    
+                    boolean matchesQuery = name.contains(query) || 
+                                          brand.contains(query) || 
+                                          category.contains(query) || 
+                                          room.contains(query) || 
+                                          tag.contains(query);
 
                     boolean matchesChip = true;
                     if (checkedId == R.id.chip_available) {
@@ -223,7 +230,7 @@ public class SupplyListFragment extends Fragment {
     }
 
     private class SupplyHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        private TextView mTitleTextView, mBrandTextView, mCategoryTextView, mStatusTextView, mQuantityTextView;
+        private TextView mTitleTextView, mBrandTextView, mCategoryTextView, mRoomTextView, mStatusTextView, mQuantityTextView;
         private ImageView mPhotoThumbnail;
         private SupplyItem mItem;
         private String mCurrentPhotoPath;
@@ -234,6 +241,7 @@ public class SupplyListFragment extends Fragment {
             mTitleTextView = itemView.findViewById(R.id.item_title);
             mBrandTextView = itemView.findViewById(R.id.item_brand);
             mCategoryTextView = itemView.findViewById(R.id.item_category);
+            mRoomTextView = itemView.findViewById(R.id.item_room);
             mStatusTextView = itemView.findViewById(R.id.item_status);
             mQuantityTextView = itemView.findViewById(R.id.item_quantity);
             mPhotoThumbnail = itemView.findViewById(R.id.item_photo_thumbnail);
@@ -244,6 +252,7 @@ public class SupplyListFragment extends Fragment {
             mTitleTextView.setText(mItem.getName() != null && !mItem.getName().isEmpty() ? mItem.getName() : "Unnamed Item");
             mBrandTextView.setText(mItem.getBrand() != null && !mItem.getBrand().isEmpty() ? mItem.getBrand() : "No Brand");
             mCategoryTextView.setText(mItem.getCategory() != null ? mItem.getCategory() : "");
+            mRoomTextView.setText("• " + (mItem.getRoom() != null ? mItem.getRoom() : "No Room"));
             mQuantityTextView.setText("In Stock: " + mItem.getQuantity());
             
             if (mItem.getQuantity() > 0) {

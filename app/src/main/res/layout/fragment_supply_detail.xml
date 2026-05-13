@@ -73,7 +73,7 @@
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Product Details"
+                    android:text="Asset Tracking"
                     android:textAppearance="?attr/textAppearanceTitleLarge"
                     android:textColor="?attr/colorOnSurface"
                     android:textStyle="bold"
@@ -82,7 +82,7 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Item Name"
+                    android:hint="Item Name (e.g. Aircon, Smart TV)"
                     android:layout_marginBottom="20dp"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     app:boxCornerRadiusTopStart="16dp"
@@ -97,6 +97,27 @@
                         android:layout_height="wrap_content"
                         android:textColor="?attr/colorOnSurface"
                         android:inputType="textCapWords"
+                        android:paddingVertical="16dp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="Property Tag / Serial Number"
+                    android:layout_marginBottom="20dp"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:startIconDrawable="@android:drawable/ic_menu_agenda">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/supply_property_tag"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorOnSurface"
+                        android:inputType="textCapCharacters"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -173,7 +194,7 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Room"
+                    android:hint="Assigned Room / Classroom"
                     android:layout_marginBottom="20dp"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     app:boxCornerRadiusTopStart="16dp"
@@ -194,7 +215,7 @@
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Storage Location"
+                    android:hint="Specific Location Details"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"

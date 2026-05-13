@@ -51,37 +51,57 @@
             app:layout_constraintEnd_toEndOf="@id/item_title"
             android:text="Brand Name" />
 
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/category_chip"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:id="@+id/meta_container"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:orientation="horizontal"
             android:layout_marginTop="6dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="?attr/colorPrimaryContainer"
-            app:strokeWidth="0dp"
+            android:gravity="center_vertical"
             app:layout_constraintStart_toStartOf="@id/item_title"
-            app:layout_constraintTop_toBottomOf="@id/item_brand">
-            <TextView
-                android:id="@+id/item_category"
+            app:layout_constraintTop_toBottomOf="@id/item_brand"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/category_chip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:paddingHorizontal="8dp"
-                android:paddingVertical="2dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:cardBackgroundColor="?attr/colorPrimaryContainer"
+                app:strokeWidth="0dp">
+                <TextView
+                    android:id="@+id/item_category"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="2dp"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
+                    android:textColor="?attr/colorOnPrimaryContainer"
+                    android:text="CATEGORY"
+                    android:textStyle="bold" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/item_room"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
                 android:textAppearance="?attr/textAppearanceLabelSmall"
-                android:textColor="?attr/colorOnPrimaryContainer"
-                android:text="CATEGORY"
+                android:textColor="?attr/colorSecondary"
+                android:text="• Room 101"
                 android:textStyle="bold" />
-        </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
         <TextView
             android:id="@+id/item_quantity"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:textAppearance="?attr/textAppearanceLabelMedium"
             android:textColor="?attr/colorOnSurfaceVariant"
             app:layout_constraintStart_toStartOf="@id/item_title"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/meta_container"
             android:text="In Stock: 0" />
 
         <TextView

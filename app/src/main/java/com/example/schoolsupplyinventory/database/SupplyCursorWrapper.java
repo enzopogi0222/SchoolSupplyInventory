@@ -2,9 +2,7 @@ package com.example.schoolsupplyinventory.database;
 
 import android.database.Cursor;
 import android.database.CursorWrapper;
-import android.util.Log;
 
-import com.example.schoolsupplyinventory.Room;
 import com.example.schoolsupplyinventory.SupplyItem;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 
@@ -12,7 +10,6 @@ import java.util.Date;
 import java.util.UUID;
 
 public class SupplyCursorWrapper extends CursorWrapper {
-    private static final String TAG = "SupplyCursorWrapper";
 
     public SupplyCursorWrapper(Cursor cursor) {
         super(cursor);
@@ -29,6 +26,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         String roomName = getString(getColumnIndexOrThrow(SupplyTable.Cols.ROOM));
         int quantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.QUANTITY));
         String location = getString(getColumnIndexOrThrow(SupplyTable.Cols.LOCATION));
+        String propertyTag = getString(getColumnIndexOrThrow(SupplyTable.Cols.PROPERTY_TAG));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
@@ -39,15 +37,8 @@ public class SupplyCursorWrapper extends CursorWrapper {
         item.setQuantity(quantity);
         item.setLocation(location);
         item.setCategory(categoryName != null ? categoryName : "OTHER");
-
-        if (roomName != null) {
-            try {
-                item.setRoom(Room.valueOf(roomName));
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "Unknown room: " + roomName + ", defaulting to ITE_OFFICE");
-                item.setRoom(Room.ITE_OFFICE);
-            }
-        }
+        item.setRoom(roomName != null ? roomName : "ITE OFFICE");
+        item.setPropertyTag(propertyTag != null ? propertyTag : "");
 
         return item;
     }

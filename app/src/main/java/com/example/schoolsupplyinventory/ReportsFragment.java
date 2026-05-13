@@ -21,6 +21,7 @@ import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,33 +85,61 @@ public class ReportsFragment extends Fragment {
             mStockPieChart.setCenterTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
             mStockPieChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
             mStockPieChart.setEntryLabelColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            mStockPieChart.animateY(1000);
             mStockPieChart.invalidate();
         });
     }
 
     private void setupBorrowChart() {
-        List<BarEntry> entries = new ArrayList<>();
-        entries.add(new BarEntry(0f, 10f));
-        entries.add(new BarEntry(1f, 25f));
-        entries.add(new BarEntry(2f, 15f));
-        entries.add(new BarEntry(3f, 30f));
-        entries.add(new BarEntry(4f, 20f));
+        SupplyLab.get(getActivity()).getAllBorrowRecordsAsync(records -> {
+            if (records == null) return;
 
-        BarDataSet dataSet = new BarDataSet(entries, "Items Borrowed");
-        dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.primary_purple));
-        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+            int[] monthlyTotals = new int[12];
+            
+            Calendar cal = Calendar.getInstance();
+            for (BorrowRecord record : records) {
+                if (record.getDateBorrowed() != null) {
+                    cal.setTime(record.getDateBorrowed());
+                    int month = cal.get(Calendar.MONTH);
+                    monthlyTotals[month] += record.getQuantity();
+                }
+            }
 
-        BarData data = new BarData(dataSet);
-        mBorrowBarChart.setData(data);
-        
-        final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May"};
-        mBorrowBarChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(months));
-        mBorrowBarChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-        mBorrowBarChart.getXAxis().setGranularity(1f);
-        mBorrowBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-        mBorrowBarChart.getAxisRight().setEnabled(false);
-        mBorrowBarChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-        mBorrowBarChart.getDescription().setEnabled(false);
-        mBorrowBarChart.invalidate();
+            List<BarEntry> entries = new ArrayList<>();
+            for (int i = 0; i < 12; i++) {
+                if (monthlyTotals[i] > 0) {
+                    entries.add(new BarEntry(i, monthlyTotals[i]));
+                }
+            }
+
+            // If no data, show some empty placeholder or handle accordingly
+            if (entries.isEmpty()) {
+                mBorrowBarChart.clear();
+                return;
+            }
+
+            BarDataSet dataSet = new BarDataSet(entries, "Items Borrowed");
+            dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.primary_purple));
+            dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            dataSet.setValueTextSize(10f);
+
+            BarData data = new BarData(dataSet);
+            mBorrowBarChart.setData(data);
+            
+            mBorrowBarChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(months));
+            mBorrowBarChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            mBorrowBarChart.getXAxis().setGranularity(1f);
+            mBorrowBarChart.getXAxis().setLabelCount(entries.size());
+            
+            mBorrowBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            mBorrowBarChart.getAxisLeft().setAxisMinimum(0f);
+            
+            mBorrowBarChart.getAxisRight().setEnabled(false);
+            mBorrowBarChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+            mBorrowBarChart.getDescription().setEnabled(false);
+            mBorrowBarChart.animateY(1000);
+            mBorrowBarChart.invalidate();
+        });
     }
 }
