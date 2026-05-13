@@ -32,6 +32,7 @@ public class SupplyDbSchema {
             public static final String NAME = "name";
             public static final String BARCODE = "barcode";
             public static final String EMAIL = "email";
+            public static final String ROLE = "role"; // "ADMIN", "STAFF", "STUDENT"
         }
     }
 
@@ -48,6 +49,19 @@ public class SupplyDbSchema {
             public static final String EXPECTED_RETURN_DATE = "expected_return_date";
             public static final String ACTUAL_RETURN_DATE = "actual_return_date";
             public static final String STATUS = "status"; // "Borrowed" or "Returned"
+        }
+    }
+
+    public static final class RequestTable {
+        public static final String NAME = "requests";
+
+        public static final class Cols {
+            public static final String UUID = "uuid";
+            public static final String ITEM_ID = "item_id";
+            public static final String REQUESTER_NAME = "requester_name";
+            public static final String QUANTITY = "quantity";
+            public static final String DATE_REQUESTED = "date_requested";
+            public static final String STATUS = "status"; // "PENDING", "APPROVED", "REJECTED"
         }
     }
 
@@ -71,7 +85,7 @@ public class SupplyDbSchema {
             public static final String UUID = "uuid";
             public static final String ITEM_ID = "item_id";
             public static final String ITEM_NAME = "item_name";
-            public static final String ACTION = "action"; // "ADDED", "EDITED", "DELETED", "BORROWED", "RETURNED"
+            public static final String ACTION = "action"; // "ADDED", "EDITED", "DELETED", "BORROWED", "RETURNED", "REQUESTED", "APPROVED", "REJECTED"
             public static final String USER = "user";
             public static final String TIMESTAMP = "timestamp";
             public static final String DETAILS = "details";

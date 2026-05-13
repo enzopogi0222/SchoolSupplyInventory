@@ -8,12 +8,13 @@ import android.database.sqlite.SQLiteOpenHelper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.HistoryTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.RequestTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 14;
+    private static final int VERSION = 15;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -47,13 +48,15 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 UserTable.Cols.UUID + ", " +
                 UserTable.Cols.NAME + ", " +
                 UserTable.Cols.BARCODE + ", " +
-                UserTable.Cols.EMAIL + ")"
+                UserTable.Cols.EMAIL + ", " +
+                UserTable.Cols.ROLE + ")"
         );
 
         createBorrowTable(db);
         createCategoryTable(db);
         createRoomTable(db);
         createHistoryTable(db);
+        createRequestTable(db);
     }
 
     private void createBorrowTable(SQLiteDatabase db) {
@@ -116,6 +119,18 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         );
     }
 
+    private void createRequestTable(SQLiteDatabase db) {
+        db.execSQL("create table " + RequestTable.NAME + "(" +
+                " _id integer primary key autoincrement, " +
+                RequestTable.Cols.UUID + ", " +
+                RequestTable.Cols.ITEM_ID + ", " +
+                RequestTable.Cols.REQUESTER_NAME + ", " +
+                RequestTable.Cols.QUANTITY + ", " +
+                RequestTable.Cols.DATE_REQUESTED + ", " +
+                RequestTable.Cols.STATUS + ")"
+        );
+    }
+
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
         if (oldVersion < 2) {
@@ -168,6 +183,10 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 14) {
             createHistoryTable(db);
+        }
+        if (oldVersion < 15) {
+            db.execSQL("alter table " + UserTable.NAME + " add column " + UserTable.Cols.ROLE + " text default 'STAFF'");
+            createRequestTable(db);
         }
     }
 }

@@ -55,8 +55,11 @@ public class DashboardFragment extends Fragment {
     private MaterialButton mLogoutButton;
     private ViewGroup mRecentActivityContainer;
 
-    private static final String CHANNEL_ID = "overdue_alerts";
-    private static final int NOTIFICATION_ID = 101;
+    private static final String CHANNEL_ID = "supply_alerts";
+    private static final int NOTIFY_OVERDUE = 101;
+    private static final int NOTIFY_LOW_STOCK = 102;
+    private static final int NOTIFY_EXPIRING = 103;
+    private static final int NOTIFY_PENDING_REQUESTS = 104;
 
     private ActivityResultLauncher<String> requestPermissionLauncher;
     private ActivityResultLauncher<Intent> mScanIdLauncher;
@@ -66,7 +69,7 @@ public class DashboardFragment extends Fragment {
     private SupplyItem mSelectedBorrowItem;
     private BorrowRecord mSelectedReturnRecord;
 
-    private static boolean sCheckedOverdueThisSession = false;
+    private static boolean sCheckedAlertsThisSession = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -76,7 +79,7 @@ public class DashboardFragment extends Fragment {
                 new ActivityResultContracts.RequestPermission(),
                 isGranted -> {
                     if (isGranted) {
-                        checkOverdueItems();
+                        checkInventoryAlerts();
                     }
                 }
         );
@@ -477,7 +480,7 @@ public class DashboardFragment extends Fragment {
                             if (success) {
                                 Toast.makeText(getActivity(), "Due date updated", Toast.LENGTH_SHORT).show();
                                 loadRecentActivity();
-                                checkOverdueItems();
+                                checkInventoryAlerts();
                             }
                         });
                     });
@@ -500,13 +503,15 @@ public class DashboardFragment extends Fragment {
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "SupplyFlow Alerts";
-            String description = "Notifications for items that have not been returned on time";
+            CharSequence name = "SupplyFlow Inventory Alerts";
+            String description = "Alerts for low stock, expiring items, and overdue borrows";
             int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
             NotificationManager notificationManager = getActivity().getSystemService(NotificationManager.class);
-            notificationManager.createNotificationChannel(channel);
+            if (notificationManager != null) {
+                notificationManager.createNotificationChannel(channel);
+            }
         }
     }
 
@@ -515,47 +520,73 @@ public class DashboardFragment extends Fragment {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
             } else {
-                checkOverdueItems();
+                checkInventoryAlerts();
             }
         } else {
-            checkOverdueItems();
+            checkInventoryAlerts();
         }
     }
 
-    private void checkOverdueItems() {
-        if (!isAdded() || sCheckedOverdueThisSession) return;
-        sCheckedOverdueThisSession = true;
+    private void checkInventoryAlerts() {
+        if (!isAdded() || sCheckedAlertsThisSession) return;
+        sCheckedAlertsThisSession = true;
 
-        SupplyLab.get(requireActivity()).getActiveBorrowRecordsAsync(borrows -> {
+        SupplyLab lab = SupplyLab.get(requireActivity());
+        long currentTime = System.currentTimeMillis();
+
+        // 1. Check for Overdue
+        lab.getActiveBorrowRecordsAsync(borrows -> {
             if (!isAdded()) return;
-            long currentTime = System.currentTimeMillis();
             List<BorrowRecord> overdueRecords = borrows.stream()
                     .filter(r -> r.getExpectedReturnDate() != null && r.getExpectedReturnDate().getTime() < currentTime)
                     .collect(Collectors.toList());
-
-            Log.d(TAG, "Checking overdue items. Found: " + overdueRecords.size());
             if (!overdueRecords.isEmpty()) {
-                sendOverdueNotification(overdueRecords.size());
+                sendLocalNotification(NOTIFY_OVERDUE, "Overdue Items Alert", "There are " + overdueRecords.size() + " overdue items.");
+            }
+        });
+
+        // 2. Check for Low Stock & Expiring
+        lab.getItemsAsync(items -> {
+            if (!isAdded()) return;
+            
+            List<SupplyItem> lowStock = items.stream().filter(i -> i.getQuantity() > 0 && i.getQuantity() <= 5).collect(Collectors.toList());
+            if (!lowStock.isEmpty()) {
+                sendLocalNotification(NOTIFY_LOW_STOCK, "Low Stock Warning", lowStock.size() + " items are running low.");
+            }
+
+            long thirtyDays = 30L * 24 * 60 * 60 * 1000;
+            List<SupplyItem> expiring = items.stream().filter(i -> i.getExpirationDate() != null && 
+                i.getExpirationDate().getTime() > currentTime && i.getExpirationDate().getTime() < (currentTime + thirtyDays)).collect(Collectors.toList());
+            if (!expiring.isEmpty()) {
+                sendLocalNotification(NOTIFY_EXPIRING, "Expiring Supplies", expiring.size() + " items will expire soon.");
+            }
+        });
+
+        // 3. Check for Pending Requests
+        lab.getPendingRequestsAsync(requests -> {
+            if (!isAdded()) return;
+            if (!requests.isEmpty()) {
+                sendLocalNotification(NOTIFY_PENDING_REQUESTS, "Pending Requests", requests.size() + " requests need approval.");
             }
         });
     }
 
-    private void sendOverdueNotification(int count) {
+    private void sendLocalNotification(int id, String title, String text) {
         Intent intent = new Intent(getActivity(), InventoryActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(getActivity(), 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(getActivity(), id, intent, PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
-                .setContentTitle("Overdue Items Alert")
-                .setContentText("There are " + count + " items past their expected return date!")
+                .setContentTitle(title)
+                .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
-                .setColor(Color.RED);
+                .setColor(Color.parseColor("#673AB7"));
 
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(requireContext());
         try {
-            notificationManager.notify(NOTIFICATION_ID, builder.build());
+            notificationManager.notify(id, builder.build());
         } catch (SecurityException e) {
             // Permission not granted
         }

@@ -12,6 +12,7 @@ import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.HistoryTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.RequestTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
@@ -228,6 +229,74 @@ public class SupplyLab {
         }
         
         return true;
+    }
+
+    // --- Request Methods ---
+    public void addRequestAsync(SupplyRequest request, Callback<Void> callback) {
+        mExecutor.execute(() -> {
+            ContentValues values = new ContentValues();
+            values.put(RequestTable.Cols.UUID, request.getId().toString());
+            values.put(RequestTable.Cols.ITEM_ID, request.getItemId().toString());
+            values.put(RequestTable.Cols.REQUESTER_NAME, request.getRequesterName());
+            values.put(RequestTable.Cols.QUANTITY, request.getQuantity());
+            values.put(RequestTable.Cols.DATE_REQUESTED, request.getDateRequested().getTime());
+            values.put(RequestTable.Cols.STATUS, request.getStatus());
+            mDatabase.insert(RequestTable.NAME, null, values);
+
+            SupplyItem item = getItem(request.getItemId());
+            String itemName = item != null ? item.getName() : "Unknown Item";
+            logHistory(request.getItemId(), itemName, "REQUESTED", "Requested " + request.getQuantity() + " by " + request.getRequesterName());
+
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
+        });
+    }
+
+    public void getPendingRequestsAsync(Callback<List<SupplyRequest>> callback) {
+        mExecutor.execute(() -> {
+            List<SupplyRequest> requests = getPendingRequests();
+            mMainHandler.post(() -> callback.onComplete(requests));
+        });
+    }
+
+    public List<SupplyRequest> getPendingRequests() {
+        List<SupplyRequest> requests = new ArrayList<>();
+        Cursor cursor = mDatabase.query(RequestTable.NAME, null, RequestTable.Cols.STATUS + " = ?", new String[]{"PENDING"}, null, null, RequestTable.Cols.DATE_REQUESTED + " ASC");
+        try {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                requests.add(getSupplyRequestFromCursor(cursor));
+                cursor.moveToNext();
+            }
+        } finally {
+            cursor.close();
+        }
+        return requests;
+    }
+
+    private SupplyRequest getSupplyRequestFromCursor(Cursor cursor) {
+        SupplyRequest request = new SupplyRequest(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.UUID))));
+        request.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.ITEM_ID))));
+        request.setRequesterName(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.REQUESTER_NAME)));
+        request.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(RequestTable.Cols.QUANTITY)));
+        request.setDateRequested(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(RequestTable.Cols.DATE_REQUESTED))));
+        request.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.STATUS)));
+        return request;
+    }
+
+    public void updateRequestStatusAsync(SupplyRequest request, String newStatus, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            ContentValues values = new ContentValues();
+            values.put(RequestTable.Cols.STATUS, newStatus);
+            int rows = mDatabase.update(RequestTable.NAME, values, RequestTable.Cols.UUID + " = ?", new String[]{request.getId().toString()});
+            
+            SupplyItem item = getItem(request.getItemId());
+            String itemName = item != null ? item.getName() : "Unknown Item";
+            logHistory(request.getItemId(), itemName, newStatus, "Request status updated to " + newStatus);
+
+            mMainHandler.post(() -> callback.onComplete(rows > 0));
+        });
     }
 
     private void logHistory(UUID itemId, String itemName, String action, String details) {

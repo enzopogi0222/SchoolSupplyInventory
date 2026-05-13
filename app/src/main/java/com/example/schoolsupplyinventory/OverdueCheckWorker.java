@@ -15,13 +15,17 @@ import androidx.core.app.NotificationManagerCompat;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
 
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class OverdueCheckWorker extends Worker {
     private static final String TAG = "OverdueCheckWorker";
-    private static final String CHANNEL_ID = "overdue_alerts";
-    private static final int NOTIFICATION_ID = 101;
+    private static final String CHANNEL_ID_ALERTS = "supply_alerts";
+    private static final int NOTIFY_OVERDUE = 101;
+    private static final int NOTIFY_LOW_STOCK = 102;
+    private static final int NOTIFY_EXPIRING = 103;
+    private static final int NOTIFY_PENDING_REQUESTS = 104;
 
     public OverdueCheckWorker(@NonNull Context context, @NonNull WorkerParameters workerParams) {
         super(context, workerParams);
@@ -30,42 +34,74 @@ public class OverdueCheckWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        Log.d(TAG, "Worker started checking for overdue items");
-        
-        // We need to use a blocking call here as doWork runs on a background thread
-        List<BorrowRecord> borrows = SupplyLab.get(getApplicationContext()).getActiveBorrowRecords();
+        Log.d(TAG, "Notification check worker started");
+        Context context = getApplicationContext();
+        SupplyLab lab = SupplyLab.get(context);
+        createNotificationChannel(context);
+
+        // 1. Check for Overdue Items (Borrow due reminders)
+        List<BorrowRecord> borrows = lab.getActiveBorrowRecords();
         long currentTime = System.currentTimeMillis();
-        
         List<BorrowRecord> overdueRecords = borrows.stream()
                 .filter(r -> r.getExpectedReturnDate() != null && r.getExpectedReturnDate().getTime() < currentTime)
                 .collect(Collectors.toList());
 
         if (!overdueRecords.isEmpty()) {
-            sendOverdueNotification(overdueRecords.size());
+            sendNotification(NOTIFY_OVERDUE, "Overdue Items Alert", 
+                "There are " + overdueRecords.size() + " items past their return date!");
+        }
+
+        // 2. Check for Low Stock
+        List<SupplyItem> items = lab.getItems();
+        List<SupplyItem> lowStockItems = items.stream()
+                .filter(item -> item.getQuantity() > 0 && item.getQuantity() <= 5)
+                .collect(Collectors.toList());
+        
+        if (!lowStockItems.isEmpty()) {
+            sendNotification(NOTIFY_LOW_STOCK, "Low Stock Warning", 
+                lowStockItems.size() + " items are running low on stock.");
+        }
+
+        // 3. Check for Expiring Items (within next 30 days)
+        long thirtyDaysMillis = 30L * 24 * 60 * 60 * 1000;
+        List<SupplyItem> expiringItems = items.stream()
+                .filter(item -> item.getExpirationDate() != null && 
+                                item.getExpirationDate().getTime() > currentTime &&
+                                item.getExpirationDate().getTime() < (currentTime + thirtyDaysMillis))
+                .collect(Collectors.toList());
+
+        if (!expiringItems.isEmpty()) {
+            sendNotification(NOTIFY_EXPIRING, "Expiring Supplies Alert", 
+                expiringItems.size() + " items will expire within the next 30 days.");
+        }
+
+        // 4. Check for Pending Requests (Request approval notifications)
+        List<SupplyRequest> pendingRequests = lab.getPendingRequests();
+        if (!pendingRequests.isEmpty()) {
+            sendNotification(NOTIFY_PENDING_REQUESTS, "Pending Requests", 
+                "There are " + pendingRequests.size() + " supply requests awaiting approval.");
         }
 
         return Result.success();
     }
 
-    private void sendOverdueNotification(int count) {
+    private void sendNotification(int id, String title, String text) {
         Context context = getApplicationContext();
-        createNotificationChannel(context);
-
         Intent intent = new Intent(context, InventoryActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE);
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_IMMUTABLE);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID_ALERTS)
                 .setSmallIcon(android.R.drawable.stat_sys_warning)
-                .setContentTitle("Overdue Items Alert")
-                .setContentText("There are " + count + " items past their expected return date!")
+                .setContentTitle(title)
+                .setContentText(text)
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
-                .setColor(Color.RED);
+                .setColor(Color.parseColor("#673AB7")); // primary_purple
 
         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
         try {
-            notificationManager.notify(NOTIFICATION_ID, builder.build());
+            notificationManager.notify(id, builder.build());
         } catch (SecurityException e) {
             Log.e(TAG, "Notification permission not granted", e);
         }
@@ -73,10 +109,10 @@ public class OverdueCheckWorker extends Worker {
 
     private void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "SupplyFlow Alerts";
-            String description = "Notifications for items that have not been returned on time";
+            CharSequence name = "SupplyFlow Inventory Alerts";
+            String description = "Alerts for low stock, expiring items, and overdue borrows";
             int importance = NotificationManager.IMPORTANCE_HIGH;
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID_ALERTS, name, importance);
             channel.setDescription(description);
             NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
             if (notificationManager != null) {
