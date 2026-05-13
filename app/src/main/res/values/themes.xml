@@ -4,46 +4,62 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
 
-        <!-- Customize your light theme here. -->
-        <item name="colorPrimary">@color/primary_purple</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <item name="colorPrimaryContainer">@color/glass_purple</item>
-        <item name="colorOnPrimaryContainer">@color/primary_purple</item>
+        <!-- Material 3 Color Palette -->
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/on_primary</item>
+        <item name="colorPrimaryContainer">@color/primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/on_primary_container</item>
 
-        <item name="colorSecondary">@color/secondary_purple</item>
-        <item name="colorOnSecondary">@color/white</item>
+        <item name="colorSecondary">@color/secondary</item>
+        <item name="colorOnSecondary">@color/on_secondary</item>
+        <item name="colorSecondaryContainer">@color/secondary_container</item>
+        <item name="colorOnSecondaryContainer">@color/on_secondary_container</item>
+
+        <item name="colorTertiary">@color/tertiary</item>
+        <item name="colorOnTertiary">@color/on_tertiary</item>
+        <item name="colorTertiaryContainer">@color/tertiary_container</item>
+        <item name="colorOnTertiaryContainer">@color/on_tertiary_container</item>
 
         <item name="android:windowBackground">@color/background</item>
-        <item name="colorSurface">@color/background</item>
-        <item name="colorSurfaceContainer">@color/card_background</item>
-        <item name="colorOnSurface">@color/text_primary</item>
-        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
-        <item name="colorOutline">@color/divider</item>
+        <item name="colorSurface">@color/surface</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurface">@color/on_surface</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorOutline">@color/outline</item>
 
         <!-- Navigation bar and Status bar -->
-        <item name="android:navigationBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/surface</item>
         <item name="android:statusBarColor">@color/background</item>
         <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
         <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
+
+        <!-- Typography -->
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.App.HeadlineLarge</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.App.TitleMedium</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.App.BodyLarge</item>
     </style>
 
     <style name="Theme.SupplyFlow" parent="Base.Theme.SupplyFlow" />
 
-    <!-- Modern Card Style -->
-    <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Filled">
-        <item name="cardBackgroundColor">@color/card_background</item>
-        <item name="cardCornerRadius">24dp</item>
-        <item name="cardElevation">2dp</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="strokeColor">@color/divider</item>
+    <!-- Typography Styles -->
+    <style name="TextAppearance.App.HeadlineLarge" parent="TextAppearance.Material3.HeadlineLarge">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/on_surface</item>
     </style>
 
-    <!-- Glass Style for Overlays -->
-    <style name="Widget.App.GlassCard" parent="Widget.Material3.CardView.Filled">
-        <item name="cardBackgroundColor">@color/glass_purple</item>
-        <item name="cardCornerRadius">24dp</item>
-        <item name="strokeWidth">1dp</item>
-        <item name="strokeColor">@color/primary_purple</item>
-        <item name="android:alpha">0.9</item>
+    <style name="TextAppearance.App.TitleMedium" parent="TextAppearance.Material3.TitleMedium">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/on_surface</item>
+    </style>
+
+    <style name="TextAppearance.App.BodyLarge" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">@color/on_surface_variant</item>
+    </style>
+
+    <!-- Modern Card Style -->
+    <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardBackgroundColor">@color/surface</item>
+        <item name="cardCornerRadius">16dp</item>
+        <item name="cardElevation">2dp</item>
     </style>
 </resources>

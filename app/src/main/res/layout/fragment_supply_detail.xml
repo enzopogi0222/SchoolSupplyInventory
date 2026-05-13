@@ -4,7 +4,7 @@
     android:id="@+id/supply_detail_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?attr/colorSurface"
+    android:background="?attr/android:windowBackground"
     android:fillViewport="true"
     android:scrollbars="none">
 
@@ -12,16 +12,18 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="20dp">
+        android:paddingHorizontal="24dp"
+        android:paddingTop="24dp"
+        android:paddingBottom="48dp">
 
         <!-- Header Photo Card -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
-            android:layout_height="240dp"
-            android:layout_marginBottom="24dp"
-            app:cardCornerRadius="28dp"
+            android:layout_height="260dp"
+            android:layout_marginBottom="28dp"
+            app:cardCornerRadius="32dp"
             app:cardElevation="0dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
             app:strokeWidth="0dp">
 
             <FrameLayout
@@ -45,24 +47,21 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="bottom|end"
-                    android:layout_margin="16dp"
+                    android:layout_margin="20dp"
                     app:srcCompat="@android:drawable/ic_menu_camera"
                     app:fabSize="normal"
                     app:tint="?attr/colorOnPrimary"
                     app:backgroundTint="?attr/colorPrimary"
-                    app:shapeAppearanceOverlay="?attr/shapeAppearanceCornerLarge" />
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.LargeComponent" />
             </FrameLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- General Info Card -->
         <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardCornerRadius="28dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -75,8 +74,6 @@
                     android:layout_height="wrap_content"
                     android:text="General Information"
                     android:textAppearance="?attr/textAppearanceTitleLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textStyle="bold"
                     android:layout_marginBottom="24dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -89,14 +86,15 @@
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_edit">
+                    app:startIconDrawable="@android:drawable/ic_menu_edit"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/supply_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="textCapWords"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -110,14 +108,15 @@
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_info_details">
+                    app:startIconDrawable="@android:drawable/ic_menu_info_details"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/supply_brand"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="textCapWords"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -131,14 +130,15 @@
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_sort_by_size">
+                    app:startIconDrawable="@android:drawable/ic_menu_sort_by_size"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView
                         android:id="@+id/supply_category"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="none"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -166,7 +166,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="number"
-                            android:textColor="?attr/colorOnSurface"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:paddingVertical="16dp" />
                     </com.google.android.material.textfield.TextInputLayout>
 
@@ -174,7 +174,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:hint="Unit (e.g. pcs, box)"
+                        android:hint="Unit (pcs, box)"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                         app:boxCornerRadiusTopStart="16dp"
                         app:boxCornerRadiusTopEnd="16dp"
@@ -186,7 +186,7 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="text"
-                            android:textColor="?attr/colorOnSurface"
+                            android:textAppearance="?attr/textAppearanceBodyLarge"
                             android:paddingVertical="16dp" />
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
@@ -195,20 +195,20 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:hint="Supplier"
-                    android:layout_marginBottom="20dp"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_share">
+                    app:startIconDrawable="@android:drawable/ic_menu_share"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/supply_supplier"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="textCapWords"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -217,13 +217,10 @@
 
         <!-- Tracking & Location Card -->
         <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardCornerRadius="28dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -236,8 +233,6 @@
                     android:layout_height="wrap_content"
                     android:text="Tracking &amp; Location"
                     android:textAppearance="?attr/textAppearanceTitleLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textStyle="bold"
                     android:layout_marginBottom="24dp" />
 
                 <com.google.android.material.textfield.TextInputLayout
@@ -251,15 +246,17 @@
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:startIconDrawable="@android:drawable/ic_menu_view"
+                    app:startIconTint="?attr/colorPrimary"
                     app:endIconMode="custom"
-                    app:endIconDrawable="@android:drawable/ic_menu_camera">
+                    app:endIconDrawable="@android:drawable/ic_menu_camera"
+                    app:endIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/supply_barcode"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="text"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -273,14 +270,15 @@
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_agenda">
+                    app:startIconDrawable="@android:drawable/ic_menu_agenda"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/supply_property_tag"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="textCapCharacters"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -294,34 +292,36 @@
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_myplaces">
+                    app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.MaterialAutoCompleteTextView
                         android:id="@+id/supply_room"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="none"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="Storage Details (Shelf/Cabinet)"
+                    android:hint="Storage Details"
                     style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
                     app:boxCornerRadiusTopStart="16dp"
                     app:boxCornerRadiusTopEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
                     app:boxCornerRadiusBottomEnd="16dp"
-                    app:startIconDrawable="@android:drawable/ic_menu_compass">
+                    app:startIconDrawable="@android:drawable/ic_menu_compass"
+                    app:startIconTint="?attr/colorPrimary">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/supply_location"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:textColor="?attr/colorOnSurface"
                         android:inputType="textCapWords"
+                        android:textAppearance="?attr/textAppearanceBodyLarge"
                         android:paddingVertical="16dp" />
                 </com.google.android.material.textfield.TextInputLayout>
 
@@ -330,13 +330,10 @@
 
         <!-- Dates & Options Card -->
         <com.google.android.material.card.MaterialCardView
+            style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="48dp"
-            app:cardCornerRadius="28dp"
-            app:cardElevation="0dp"
-            app:cardBackgroundColor="?attr/colorSurfaceContainer"
-            app:strokeWidth="0dp">
+            android:layout_marginBottom="48dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -349,31 +346,27 @@
                     android:layout_height="wrap_content"
                     android:text="Dates &amp; Options"
                     android:textAppearance="?attr/textAppearanceTitleLarge"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textStyle="bold"
                     android:layout_marginBottom="24dp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/supply_date"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="60dp"
                     android:layout_marginBottom="16dp"
                     android:text="Date Added"
-                    android:textAllCaps="false"
                     app:icon="@android:drawable/ic_menu_today"
-                    app:cornerRadius="16dp" />
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/supply_expiration_date"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
+                    android:layout_height="60dp"
                     android:layout_marginBottom="24dp"
-                    android:text="Set Expiration Date (Optional)"
-                    android:textAllCaps="false"
+                    android:text="Set Expiration Date"
                     app:icon="@android:drawable/ic_menu_recent_history"
-                    app:cornerRadius="16dp" />
+                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/supply_borrowable"
@@ -381,7 +374,6 @@
                     android:layout_height="wrap_content"
                     android:text="Allow Borrowing"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnSurface"
                     android:layout_marginBottom="12dp" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -391,7 +383,6 @@
                     android:text="Currently Borrowed"
                     android:enabled="false"
                     android:textAppearance="?attr/textAppearanceBodyLarge"
-                    android:textColor="?attr/colorOnSurface"
                     android:layout_marginBottom="24dp" />
 
                 <TextView

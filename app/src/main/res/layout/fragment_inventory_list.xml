@@ -15,49 +15,48 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:paddingHorizontal="24dp"
+            android:paddingTop="32dp"
+            android:paddingBottom="16dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Inventory"
-                android:textColor="@color/text_primary"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="20dp" />
+                android:textAppearance="?attr/textAppearanceHeadlineLarge"
+                android:layout_marginBottom="24dp" />
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/search_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 app:startIconDrawable="@android:drawable/ic_menu_search"
-                app:startIconTint="@color/primary_purple"
-                app:boxCornerRadiusTopStart="24dp"
-                app:boxCornerRadiusTopEnd="24dp"
-                app:boxCornerRadiusBottomStart="24dp"
-                app:boxCornerRadiusBottomEnd="24dp"
+                app:startIconTint="?attr/colorPrimary"
+                app:boxCornerRadiusTopStart="28dp"
+                app:boxCornerRadiusTopEnd="28dp"
+                app:boxCornerRadiusBottomStart="28dp"
+                app:boxCornerRadiusBottomEnd="28dp"
                 app:boxStrokeWidth="0dp"
                 app:boxStrokeWidthFocused="0dp"
                 app:hintEnabled="false"
                 style="@style/Widget.Material3.TextInputLayout.FilledBox"
-                app:boxBackgroundColor="@color/card_background">
+                app:boxBackgroundColor="?attr/colorSurfaceVariant">
 
                 <com.google.android.material.textfield.TextInputEditText
                     android:id="@+id/search_edit_text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:paddingTop="14dp"
-                    android:paddingBottom="14dp"
-                    android:hint="Search name, category, barcode, dept..."
-                    android:textColor="@color/text_primary"
-                    android:textColorHint="@color/text_secondary"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="16dp"
+                    android:hint="Search supplies..."
+                    android:textAppearance="?attr/textAppearanceBodyLarge"
                     android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="20dp"
                 android:scrollbars="none">
 
                 <com.google.android.material.chip.ChipGroup
@@ -65,58 +64,44 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:singleSelection="true"
-                    app:selectionRequired="true">
+                    app:selectionRequired="true"
+                    app:chipSpacingHorizontal="8dp">
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_all"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="All"
-                        android:checked="true"
-                        app:chipBackgroundColor="@color/glass_purple"
-                        app:chipStrokeWidth="0dp"
-                        android:textColor="@color/text_primary" />
+                        android:text="All Items"
+                        android:checked="true" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_available"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Available"
-                        app:chipBackgroundColor="@color/glass_purple"
-                        app:chipStrokeWidth="0dp"
-                        android:textColor="@color/text_primary" />
+                        android:text="Available" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_borrowed"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Borrowed"
-                        app:chipBackgroundColor="@color/glass_purple"
-                        app:chipStrokeWidth="0dp"
-                        android:textColor="@color/text_primary" />
+                        android:text="Borrowed" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_damaged"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Damaged"
-                        app:chipBackgroundColor="@color/glass_purple"
-                        app:chipStrokeWidth="0dp"
-                        android:textColor="@color/text_primary" />
+                        android:text="Damaged" />
 
                     <com.google.android.material.chip.Chip
                         android:id="@+id/chip_low_stock"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Low Stock"
-                        app:chipBackgroundColor="@color/glass_purple"
-                        app:chipStrokeWidth="0dp"
-                        android:textColor="@color/text_primary" />
+                        android:text="Low Stock" />
 
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
@@ -142,8 +127,8 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
-                    <include layout="@layout/shimmer_list_item_supply" />
+                    android:orientation="vertical"
+                    android:paddingTop="8dp">
                     <include layout="@layout/shimmer_list_item_supply" />
                     <include layout="@layout/shimmer_list_item_supply" />
                     <include layout="@layout/shimmer_list_item_supply" />
@@ -164,33 +149,31 @@
                 android:layout_height="match_parent"
                 android:gravity="center"
                 android:orientation="vertical"
-                android:padding="32dp"
+                android:padding="48dp"
                 android:visibility="gone">
 
                 <ImageView
-                    android:layout_width="120dp"
-                    android:layout_height="120dp"
-                    android:alpha="0.5"
+                    android:layout_width="140dp"
+                    android:layout_height="140dp"
+                    android:alpha="0.3"
                     android:src="@android:drawable/ic_menu_search"
-                    app:tint="@color/text_secondary" />
+                    app:tint="?attr/colorOnSurfaceVariant" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="16dp"
+                    android:layout_marginTop="24dp"
                     android:text="No supplies found"
-                    android:textColor="@color/text_primary"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="Try adjusting your filters or search query"
+                    android:text="Try adjusting your filters or search query to find what you're looking for."
                     android:textAlignment="center"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="14sp" />
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
             </LinearLayout>
 
         </FrameLayout>
@@ -204,10 +187,10 @@
         android:layout_margin="24dp"
         android:text="Add Item"
         app:icon="@android:drawable/ic_input_add"
-        app:iconTint="@color/white"
-        android:textColor="@color/white"
-        app:backgroundTint="@color/primary_purple"
-        app:elevation="6dp"
+        app:iconTint="?attr/colorOnPrimary"
+        android:textColor="?attr/colorOnPrimary"
+        app:backgroundTint="?attr/colorPrimary"
+        app:elevation="4dp"
         app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.LargeComponent"
         android:contentDescription="Add new item" />
 

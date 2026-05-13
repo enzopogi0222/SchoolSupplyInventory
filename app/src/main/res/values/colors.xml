@@ -3,22 +3,42 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
-    <!-- Modern Light Theme Palette -->
-    <color name="background">#F8F9FF</color>
-    <color name="card_background">#FFFFFF</color>
-    <color name="primary_purple">#6366F1</color>
-    <color name="secondary_purple">#818CF8</color>
-    <color name="text_primary">#1E293B</color>
-    <color name="text_secondary">#64748B</color>
+    <!-- Modern Material 3 Palette (School Friendly) -->
+    <color name="primary">#2563EB</color> <!-- Trustworthy Blue -->
+    <color name="on_primary">#FFFFFF</color>
+    <color name="primary_container">#DBEAFE</color>
+    <color name="on_primary_container">#1E40AF</color>
 
-    <!-- Semantic Colors (Adjusted for Light Background) -->
+    <color name="secondary">#F97316</color> <!-- Energetic Orange -->
+    <color name="on_secondary">#FFFFFF</color>
+    <color name="secondary_container">#FFEDD5</color>
+    <color name="on_secondary_container">#9A3412</color>
+
+    <color name="tertiary">#10B981</color> <!-- Fresh Green -->
+    <color name="on_tertiary">#FFFFFF</color>
+    <color name="tertiary_container">#D1FAE5</color>
+    <color name="on_tertiary_container">#065F46</color>
+
+    <color name="background">#F8FAFC</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_variant">#F1F5F9</color>
+    <color name="on_surface">#0F172A</color>
+    <color name="on_surface_variant">#475569</color>
+
+    <color name="outline">#CBD5E1</color>
+
+    <!-- Semantic Colors -->
     <color name="color_success">#10B981</color>
     <color name="color_warning">#F59E0B</color>
     <color name="color_error">#EF4444</color>
     <color name="color_info">#3B82F6</color>
 
-    <!-- Overlays and soft shadows -->
-    <color name="glass_white">#80FFFFFF</color>
-    <color name="glass_purple">#126366F1</color>
+    <!-- Compatibility/Legacy colors - mapped to new palette -->
+    <color name="primary_purple">#2563EB</color>
+    <color name="secondary_purple">#F97316</color>
+    <color name="glass_purple">#122563EB</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#475569</color>
+    <color name="card_background">#FFFFFF</color>
     <color name="divider">#E2E8F0</color>
 </resources>

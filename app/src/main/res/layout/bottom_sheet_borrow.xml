@@ -3,24 +3,26 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bottom_sheet_background"
+    android:background="?attr/colorSurface"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:paddingHorizontal="24dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="40dp">
 
     <View
-        android:layout_width="40dp"
+        android:layout_width="32dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginBottom="24dp"
-        android:background="#33000000" />
+        android:background="?attr/colorOutlineVariant"
+        android:alpha="0.4" />
 
     <TextView
         android:id="@+id/borrow_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Issue Item"
-        android:textColor="@color/text_primary"
-        android:textSize="22sp"
+        android:textAppearance="?attr/textAppearanceTitleLarge"
         android:textStyle="bold" />
 
     <TextView
@@ -29,27 +31,29 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
         android:text="Item: Select an item"
-        android:textColor="@color/text_secondary"
-        android:textSize="14sp" />
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/select_item_layout"
         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
+        android:layout_marginTop="28dp"
         android:hint="Search Item"
         app:boxCornerRadiusBottomEnd="16dp"
         app:boxCornerRadiusBottomStart="16dp"
         app:boxCornerRadiusTopEnd="16dp"
         app:boxCornerRadiusTopStart="16dp"
-        app:startIconDrawable="@android:drawable/ic_menu_search">
+        app:startIconDrawable="@android:drawable/ic_menu_search"
+        app:startIconTint="?attr/colorPrimary">
 
         <com.google.android.material.textfield.MaterialAutoCompleteTextView
             android:id="@+id/borrow_item_autocomplete"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="text" />
+            android:inputType="text"
+            android:textAppearance="?attr/textAppearanceBodyLarge" />
     </com.google.android.material.textfield.TextInputLayout>
 
     <LinearLayout
@@ -71,15 +75,14 @@
             app:boxCornerRadiusTopEnd="16dp"
             app:boxCornerRadiusTopStart="16dp"
             app:startIconDrawable="@android:drawable/ic_menu_myplaces"
-            app:endIconMode="custom"
-            app:endIconDrawable="@android:drawable/ic_menu_camera"
-            app:endIconContentDescription="Scan ID">
+            app:startIconTint="?attr/colorPrimary">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/borrower_name_edit"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="textPersonName" />
+                android:inputType="textPersonName"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
@@ -97,7 +100,8 @@
                 android:id="@+id/borrow_qty_edit"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="number" />
+                android:inputType="number"
+                android:textAppearance="?attr/textAppearanceBodyLarge" />
         </com.google.android.material.textfield.TextInputLayout>
     </LinearLayout>
 
@@ -105,16 +109,16 @@
         android:id="@+id/btn_select_date"
         style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
-        android:layout_height="56dp"
+        android:layout_height="60dp"
         android:layout_marginTop="16dp"
         android:text="Expected Return Date"
-        app:cornerRadius="16dp"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent"
         app:icon="@android:drawable/ic_menu_today" />
 
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="12dp"
         android:scrollbars="none">
 
         <com.google.android.material.chip.ChipGroup
@@ -158,12 +162,9 @@
         android:id="@+id/btn_confirm_borrow"
         android:layout_width="match_parent"
         android:layout_height="60dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="@color/primary_purple"
+        android:layout_marginTop="32dp"
         android:text="Confirm Issuance"
-        android:textColor="@color/white"
-        android:textStyle="bold"
-        app:cornerRadius="20dp" />
+        android:textAppearance="?attr/textAppearanceTitleMedium"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
 
 </LinearLayout>

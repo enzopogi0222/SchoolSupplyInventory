@@ -3,50 +3,48 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="?attr/android:windowBackground"
     android:scrollbars="none">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:paddingHorizontal="24dp"
+        android:paddingTop="32dp"
+        android:paddingBottom="48dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Reports &amp; Analytics"
-            android:textColor="@color/text_primary"
-            android:textSize="28sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="24dp" />
+            android:textAppearance="?attr/textAppearanceHeadlineLarge"
+            android:layout_marginBottom="32dp" />
 
         <!-- Stock Overview Chart -->
         <com.google.android.material.card.MaterialCardView
             style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
-            android:layout_height="320dp"
-            android:layout_marginBottom="20dp">
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Stock Distribution (by Category)"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
+                    android:text="Stock Distribution"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:layout_marginBottom="16dp" />
 
                 <com.github.mikephil.charting.charts.PieChart
                     android:id="@+id/stock_pie_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="280dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -54,28 +52,26 @@
         <com.google.android.material.card.MaterialCardView
             style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
-            android:layout_height="320dp"
-            android:layout_marginBottom="20dp">
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Usage by Department/Room"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
+                    android:text="Usage by Department"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:layout_marginBottom="16dp" />
 
                 <com.github.mikephil.charting.charts.PieChart
                     android:id="@+id/room_usage_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="280dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -83,108 +79,102 @@
         <com.google.android.material.card.MaterialCardView
             style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
-            android:layout_height="320dp"
-            android:layout_marginBottom="20dp">
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Monthly Borrowing Trends"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
+                    android:text="Monthly Trends"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:layout_marginBottom="16dp" />
 
                 <com.github.mikephil.charting.charts.BarChart
                     android:id="@+id/borrow_bar_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="280dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Most Borrowed Items -->
+        <!-- Top Borrowed Items Chart -->
         <com.google.android.material.card.MaterialCardView
             style="@style/Widget.App.CardView"
             android:layout_width="match_parent"
-            android:layout_height="320dp"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="24dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="20dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Most Borrowed Items"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
+                    android:text="Top Borrowed Items"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
                     android:layout_marginBottom="16dp" />
 
                 <com.github.mikephil.charting.charts.HorizontalBarChart
                     android:id="@+id/top_items_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="match_parent" />
+                    android:layout_height="280dp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Export Options"
-            android:textColor="@color/text_primary"
-            android:textSize="18sp"
-            android:textStyle="bold"
+            android:text="Export Data"
+            android:textAppearance="?attr/textAppearanceTitleLarge"
+            android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp" />
 
         <!-- Export Actions -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="40dp">
+            android:orientation="horizontal">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_export_pdf"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
-                android:layout_height="60dp"
+                android:layout_height="64dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="8dp"
                 android:text="PDF"
                 app:icon="@android:drawable/ic_menu_save"
-                app:cornerRadius="16dp" />
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_export_csv"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
-                android:layout_height="60dp"
+                android:layout_height="64dp"
                 android:layout_weight="1"
                 android:layout_marginHorizontal="4dp"
                 android:text="CSV"
                 app:icon="@android:drawable/ic_menu_share"
-                app:cornerRadius="16dp" />
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_export_excel"
                 style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="0dp"
-                android:layout_height="60dp"
+                android:layout_height="64dp"
                 android:layout_weight="1"
                 android:layout_marginStart="8dp"
                 android:text="Excel"
                 app:icon="@android:drawable/ic_menu_share"
-                app:cornerRadius="16dp" />
+                app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
         </LinearLayout>
 
     </LinearLayout>
