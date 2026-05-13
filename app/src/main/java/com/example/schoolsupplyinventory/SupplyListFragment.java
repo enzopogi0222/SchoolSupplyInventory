@@ -175,7 +175,7 @@ public class SupplyListFragment extends Fragment {
                 
                 final SupplyItem itemToDelete = mAdapter.mItems.get(position);
 
-                new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SchoolSupplyInventory)
+                new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SupplyFlow)
                         .setTitle("Delete Item")
                         .setMessage("Are you sure you want to delete " + itemToDelete.getName() + "?")
                         .setPositiveButton("Delete", (dialog, which) -> {
@@ -255,11 +255,14 @@ public class SupplyListFragment extends Fragment {
             mRoomTextView.setText("• " + (mItem.getRoom() != null ? mItem.getRoom() : "No Room"));
             mQuantityTextView.setText("In Stock: " + mItem.getQuantity());
             
-            if (mItem.getQuantity() > 0) {
+            if (mItem.isBorrowed()) {
+                mStatusTextView.setText("BORROWED");
+                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_warning));
+            } else if (mItem.getQuantity() > 0) {
                 mStatusTextView.setText("AVAILABLE");
                 mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_success));
             } else {
-                mStatusTextView.setText("OUT OF STOCK");
+                mStatusTextView.setText("NOT AVAILABLE");
                 mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_error));
             }
 

@@ -1,5 +1,6 @@
 package com.example.schoolsupplyinventory;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -22,6 +23,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
@@ -46,8 +48,10 @@ import java.util.UUID;
 public class SupplyDetailFragment extends Fragment {
 
     private static final String ARG_ITEM_ID = "item_id";
+    private static final String SAVED_ITEM_ID = "saved_item_id";
     private static final int REQUEST_ID_SCAN = 2;
     private static final int REQUEST_PHOTO = 3;
+    private static final int REQUEST_CAMERA_PERMISSION = 4;
     private static final String ADD_NEW_OPTION = "+ ADD NEW";
 
     private SupplyItem mItem;
@@ -63,8 +67,6 @@ public class SupplyDetailFragment extends Fragment {
     private TextInputEditText mLocationField;
     private MaterialButton mDateButton;
     private MaterialSwitch mBorrowedSwitch;
-    private TextView mBorrowerDisplayTextView;
-    private MaterialButton mScanIdButton;
     private MaterialButton mReportButton;
     private FloatingActionButton mPhotoButton;
     private ImageView mPhotoView;
@@ -87,13 +89,21 @@ public class SupplyDetailFragment extends Fragment {
         setHasOptionsMenu(true);
         
         UUID itemId = null;
-        if (getArguments() != null && getArguments().containsKey(ARG_ITEM_ID)) {
+        if (savedInstanceState != null && savedInstanceState.containsKey(SAVED_ITEM_ID)) {
+            itemId = (UUID) savedInstanceState.getSerializable(SAVED_ITEM_ID);
+        } else if (getArguments() != null && getArguments().containsKey(ARG_ITEM_ID)) {
             itemId = (UUID) getArguments().getSerializable(ARG_ITEM_ID);
         }
 
         if (itemId != null) {
             mItem = SupplyLab.get(getActivity()).getItem(itemId);
-            mIsNewItem = false;
+            // If item not in lab yet (it was a new item unsaved but ID was persisted)
+            if (mItem == null) {
+                mItem = new SupplyItem(itemId);
+                mIsNewItem = true;
+            } else {
+                mIsNewItem = false;
+            }
         } else {
             mItem = new SupplyItem();
             mIsNewItem = true;
@@ -101,6 +111,14 @@ public class SupplyDetailFragment extends Fragment {
         
         if (mItem != null) {
             mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        if (mItem != null) {
+            outState.putSerializable(SAVED_ITEM_ID, mItem.getId());
         }
     }
 
@@ -226,23 +244,12 @@ public class SupplyDetailFragment extends Fragment {
         });
 
         mBorrowedSwitch = v.findViewById(R.id.supply_borrowed);
-        mBorrowedSwitch.setChecked(mItem.isBorrowed());
+        
+        mBorrowedSwitch.setChecked(mItem.isBorrowable());
+
         mBorrowedSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            mItem.setBorrowed(isChecked);
-            if (!isChecked) {
-                mItem.setBorrower(null);
-                updateBorrowerDisplay();
-            }
+            mItem.setBorrowable(isChecked);
             updateLastUpdated();
-        });
-
-        mBorrowerDisplayTextView = v.findViewById(R.id.supply_borrower_display);
-        updateBorrowerDisplay();
-
-        mScanIdButton = v.findViewById(R.id.supply_scan_id);
-        mScanIdButton.setOnClickListener(v1 -> {
-            Intent intent = new Intent(getActivity(), ScannerActivity.class);
-            startActivityForResult(intent, REQUEST_ID_SCAN);
         });
 
         mReportButton = v.findViewById(R.id.supply_report);
@@ -262,22 +269,12 @@ public class SupplyDetailFragment extends Fragment {
         mPhotoView = v.findViewById(R.id.supply_photo);
 
         mPhotoButton.setOnClickListener(v1 -> {
-            final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-            Uri uri = FileProvider.getUriForFile(getActivity(),
-                    "com.example.schoolsupplyinventory.fileprovider",
-                    mPhotoFile);
-            captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
-
-            List<ResolveInfo> cameraActivities = getActivity()
-                    .getPackageManager().queryIntentActivities(captureImage,
-                            PackageManager.MATCH_DEFAULT_ONLY);
-
-            for (ResolveInfo activity : cameraActivities) {
-                getActivity().grantUriPermission(activity.activityInfo.packageName,
-                        uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                    != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+            } else {
+                launchCamera();
             }
-
-            startActivityForResult(captureImage, REQUEST_PHOTO);
         });
 
         updatePhotoView();
@@ -286,6 +283,43 @@ public class SupplyDetailFragment extends Fragment {
         updateLastUpdated();
 
         return v;
+    }
+
+    private void launchCamera() {
+        final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        
+        PackageManager packageManager = getActivity().getPackageManager();
+        if (captureImage.resolveActivity(packageManager) == null) {
+            Toast.makeText(getActivity(), "No camera app found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Uri uri = FileProvider.getUriForFile(getActivity(),
+                "com.example.schoolsupplyinventory.fileprovider",
+                mPhotoFile);
+        captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
+        captureImage.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+
+        List<ResolveInfo> cameraActivities = packageManager
+                .queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY);
+
+        for (ResolveInfo activity : cameraActivities) {
+            getActivity().grantUriPermission(activity.activityInfo.packageName,
+                    uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        }
+
+        startActivityForResult(captureImage, REQUEST_PHOTO);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                launchCamera();
+            } else {
+                Toast.makeText(getActivity(), "Camera permission is required to take photos", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void updateCategoryList() {
@@ -427,7 +461,7 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     private void confirmDelete() {
-        new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SchoolSupplyInventory)
+        new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SupplyFlow)
                 .setTitle("Delete Asset")
                 .setMessage("Are you sure you want to delete this asset?")
                 .setPositiveButton("Delete", (dialog, which) -> {
@@ -442,16 +476,6 @@ public class SupplyDetailFragment extends Fragment {
     private void updateDate() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
         mDateButton.setText("Registered: " + dateFormat.format(mItem.getDate()));
-    }
-
-    private void updateBorrowerDisplay() {
-        if (mItem.getBorrower() != null && !mItem.getBorrower().isEmpty()) {
-            mBorrowerDisplayTextView.setText(mItem.getBorrower());
-            mBorrowerDisplayTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-        } else {
-            mBorrowerDisplayTextView.setText("In Storage / Assigned");
-            mBorrowerDisplayTextView.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
-        }
     }
 
     private void updatePhotoView() {
@@ -474,7 +498,7 @@ public class SupplyDetailFragment extends Fragment {
         report.append("ASSET REPORT\n");
         report.append("----------\n");
         report.append("Item: ").append(mItem.getName()).append("\n");
-        report.append("Tag/Serial: ").append(mItem.getPropertyTag()).append("\n");
+        report.append("Tag/Serial: ").append(mPropertyTagField.getText()).append("\n");
         report.append("Brand: ").append(mItem.getBrand()).append("\n");
         report.append("Assigned Room: ").append(mItem.getRoom()).append("\n");
         report.append("Status: ").append(mItem.isBorrowed() ? "Borrowed by " + mItem.getBorrower() : "Assigned/Available").append("\n");
@@ -488,21 +512,12 @@ public class SupplyDetailFragment extends Fragment {
             return;
         }
 
-        if (requestCode == REQUEST_ID_SCAN && data != null) {
-            String scannedId = data.getStringExtra("SCANNED_BARCODE");
-            String name = SupplyLab.get(getActivity()).findNameByBarcode(scannedId);
+        if (requestCode == REQUEST_PHOTO) {
+            Uri uri = FileProvider.getUriForFile(getActivity(),
+                    "com.example.schoolsupplyinventory.fileprovider",
+                    mPhotoFile);
+            getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
 
-            mItem.setBorrowed(true);
-            mBorrowedSwitch.setChecked(true);
-
-            if (name != null) {
-                mItem.setBorrower(name);
-            } else {
-                mItem.setBorrower(scannedId);
-            }
-            updateBorrowerDisplay();
-            updateLastUpdated();
-        } else if (requestCode == REQUEST_PHOTO) {
             updatePhotoView();
             updateLastUpdated();
         }

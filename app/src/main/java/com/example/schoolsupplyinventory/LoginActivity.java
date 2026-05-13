@@ -27,7 +27,7 @@ public class LoginActivity extends AppCompatActivity {
             String password = mPasswordField.getText().toString();
 
             // Mock authentication
-            if (email.equals("admin@school.com") && password.equals("password")) {
+            if (email.equals("admin@supplyflow.com") && password.equals("password")) {
                 Intent intent = new Intent(LoginActivity.this, InventoryActivity.class);
                 startActivity(intent);
                 finish();

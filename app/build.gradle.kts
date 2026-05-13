@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.constraintlayout)
     implementation(libs.swiperefreshlayout)
     implementation(libs.shimmer)
+    implementation(libs.androidx.work.runtime)
     
     // CameraX
     implementation(libs.camera.core)

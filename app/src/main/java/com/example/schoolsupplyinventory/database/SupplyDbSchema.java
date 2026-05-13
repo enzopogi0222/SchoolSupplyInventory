@@ -16,6 +16,7 @@ public class SupplyDbSchema {
             public static final String QUANTITY = "quantity";
             public static final String LOCATION = "location";
             public static final String PROPERTY_TAG = "property_tag"; // Added for asset tracking
+            public static final String IS_BORROWABLE = "is_borrowable";
         }
     }
 

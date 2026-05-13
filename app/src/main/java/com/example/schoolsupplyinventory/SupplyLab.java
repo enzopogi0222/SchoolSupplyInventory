@@ -198,6 +198,21 @@ public class SupplyLab {
         return true;
     }
 
+    public void updateBorrowRecordAsync(BorrowRecord record, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            ContentValues values = new ContentValues();
+            values.put(BorrowTable.Cols.EXPECTED_RETURN_DATE, record.getExpectedReturnDate().getTime());
+            values.put(BorrowTable.Cols.BORROWER_NAME, record.getBorrowerName());
+            values.put(BorrowTable.Cols.QUANTITY, record.getQuantity());
+            
+            int rows = mDatabase.update(BorrowTable.NAME, values, 
+                    BorrowTable.Cols.UUID + " = ?", 
+                    new String[]{record.getId().toString()});
+            
+            mMainHandler.post(() -> callback.onComplete(rows > 0));
+        });
+    }
+
     public void getActiveBorrowRecordsAsync(Callback<List<BorrowRecord>> callback) {
         mExecutor.execute(() -> {
             List<BorrowRecord> result = getActiveBorrowRecords();
@@ -366,6 +381,7 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.QUANTITY, item.getQuantity());
         values.put(SupplyTable.Cols.LOCATION, item.getLocation());
         values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
+        values.put(SupplyTable.Cols.IS_BORROWABLE, item.isBorrowable() ? 1 : 0);
         return values;
     }
 

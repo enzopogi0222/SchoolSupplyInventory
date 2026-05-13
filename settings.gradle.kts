@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SchoolSupplyInventory"
+rootProject.name = "supplyflow"
 include(":app")

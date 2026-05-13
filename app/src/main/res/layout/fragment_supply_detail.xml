@@ -269,50 +269,6 @@
                     android:textColor="?attr/colorOnSurface"
                     android:layout_marginBottom="24dp" />
 
-                <LinearLayout
-                    android:id="@+id/borrower_section"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="16dp"
-                    android:background="?attr/colorSurfaceContainerHigh"
-                    android:layout_marginBottom="24dp">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="ACTIVE BORROWER"
-                        android:textAppearance="?attr/textAppearanceLabelSmall"
-                        android:textColor="?attr/colorPrimary"
-                        android:textStyle="bold"
-                        android:textAllCaps="true" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical">
-
-                        <TextView
-                            android:id="@+id/supply_borrower_display"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="No active borrower"
-                            android:textColor="?attr/colorOnSurface"
-                            android:textAppearance="?attr/textAppearanceTitleMedium"
-                            android:paddingVertical="12dp"/>
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/supply_scan_id"
-                            style="@style/Widget.Material3.Button.IconButton"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            app:icon="@android:drawable/ic_menu_camera"
-                            app:iconTint="?attr/colorPrimary" />
-                    </LinearLayout>
-                </LinearLayout>
-
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/supply_date"
                     style="@style/Widget.Material3.Button.TonalButton"

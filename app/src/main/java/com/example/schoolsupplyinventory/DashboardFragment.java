@@ -1,8 +1,18 @@
 package com.example.schoolsupplyinventory;
 
-import android.app.DatePickerDialog;
+import android.app.Activity;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Intent;
 import android.graphics.Color;
+import android.os.Build;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -16,11 +26,13 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
+import android.util.Log;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.List;
@@ -28,6 +40,8 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 public class DashboardFragment extends Fragment {
+
+    private static final String TAG = "DashboardFrag";
 
     private TextView mTotalCountTextView;
     private TextView mAvailableCountTextView;
@@ -41,9 +55,46 @@ public class DashboardFragment extends Fragment {
     private MaterialButton mLogoutButton;
     private ViewGroup mRecentActivityContainer;
 
+    private static final String CHANNEL_ID = "overdue_alerts";
+    private static final int NOTIFICATION_ID = 101;
+
+    private ActivityResultLauncher<String> requestPermissionLauncher;
+    private ActivityResultLauncher<Intent> mScanIdLauncher;
+    private TextInputEditText mBorrowerNameEditRef;
+
     private Calendar mExpectedReturnDate = Calendar.getInstance();
     private SupplyItem mSelectedBorrowItem;
     private BorrowRecord mSelectedReturnRecord;
+
+    private static boolean sCheckedOverdueThisSession = false;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        createNotificationChannel();
+        requestPermissionLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(),
+                isGranted -> {
+                    if (isGranted) {
+                        checkOverdueItems();
+                    }
+                }
+        );
+
+        mScanIdLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        String scannedId = result.getData().getStringExtra("SCANNED_BARCODE");
+                        String name = SupplyLab.get(getActivity()).findNameByBarcode(scannedId);
+                        
+                        if (mBorrowerNameEditRef != null) {
+                            mBorrowerNameEditRef.setText(name != null ? name : scannedId);
+                        }
+                    }
+                }
+        );
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -65,6 +116,7 @@ public class DashboardFragment extends Fragment {
 
         updateStats();
         loadRecentActivity();
+        checkAndRequestNotificationPermission();
 
         mViewInventoryButton.setOnClickListener(view -> {
             if (getActivity() instanceof InventoryActivity) {
@@ -87,8 +139,11 @@ public class DashboardFragment extends Fragment {
             }
         });
         
-        // Login removed, so Logout button should just exit the app or be hidden
-        mLogoutButton.setVisibility(View.GONE);
+        mLogoutButton.setOnClickListener(v1 -> {
+            Intent intent = new Intent(getActivity(), LoginActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(intent);
+        });
 
         return v;
     }
@@ -100,18 +155,46 @@ public class DashboardFragment extends Fragment {
 
         MaterialAutoCompleteTextView itemSearch = view.findViewById(R.id.borrow_item_autocomplete);
         TextView itemNameDisplay = view.findViewById(R.id.borrow_item_name_display);
+        TextInputLayout borrowerNameLayout = view.findViewById(R.id.borrower_name_layout);
         TextInputEditText borrowerNameEdit = view.findViewById(R.id.borrower_name_edit);
+        mBorrowerNameEditRef = borrowerNameEdit;
+        
+        borrowerNameLayout.setEndIconOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), ScannerActivity.class);
+            mScanIdLauncher.launch(intent);
+        });
+
         TextInputEditText qtyEdit = view.findViewById(R.id.borrow_qty_edit);
         MaterialButton dateBtn = view.findViewById(R.id.btn_select_date);
         MaterialButton confirmBtn = view.findViewById(R.id.btn_confirm_borrow);
+        com.google.android.material.chip.ChipGroup dateChips = view.findViewById(R.id.quick_date_chips);
 
         mExpectedReturnDate = Calendar.getInstance();
         mExpectedReturnDate.add(Calendar.DAY_OF_YEAR, 7);
         updateDateButtonText(dateBtn);
 
+        dateChips.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            if (checkedIds.isEmpty()) return;
+            
+            int checkedId = checkedIds.get(0);
+            mExpectedReturnDate = Calendar.getInstance();
+            
+            if (checkedId == R.id.chip_1day) {
+                mExpectedReturnDate.add(Calendar.DAY_OF_YEAR, 1);
+            } else if (checkedId == R.id.chip_3days) {
+                mExpectedReturnDate.add(Calendar.DAY_OF_YEAR, 3);
+            } else if (checkedId == R.id.chip_1week) {
+                mExpectedReturnDate.add(Calendar.WEEK_OF_YEAR, 1);
+            } else if (checkedId == R.id.chip_1month) {
+                mExpectedReturnDate.add(Calendar.MONTH, 1);
+            }
+            
+            updateDateButtonText(dateBtn);
+        });
+
         SupplyLab.get(getActivity()).getItemsAsync(items -> {
             List<SupplyItem> availableItems = items.stream()
-                    .filter(item -> item.getQuantity() > 0)
+                    .filter(item -> item.getQuantity() > 0 && item.isBorrowable())
                     .collect(Collectors.toList());
 
             String[] names = availableItems.stream()
@@ -130,12 +213,16 @@ public class DashboardFragment extends Fragment {
         });
 
         dateBtn.setOnClickListener(v -> {
-            DatePickerDialog dpd = new DatePickerDialog(requireContext(), (view1, year, month, day) -> {
-                mExpectedReturnDate.set(year, month, day);
+            MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
+                    .setTitleText("Select Return Date")
+                    .setSelection(mExpectedReturnDate.getTimeInMillis())
+                    .build();
+
+            datePicker.addOnPositiveButtonClickListener(selection -> {
+                mExpectedReturnDate.setTimeInMillis(selection);
                 updateDateButtonText(dateBtn);
-            }, mExpectedReturnDate.get(Calendar.YEAR), mExpectedReturnDate.get(Calendar.MONTH), mExpectedReturnDate.get(Calendar.DAY_OF_MONTH));
-            dpd.getDatePicker().setMinDate(System.currentTimeMillis());
-            dpd.show();
+            });
+            datePicker.show(getParentFragmentManager(), "DATE_PICKER");
         });
 
         confirmBtn.setOnClickListener(v -> {
@@ -147,29 +234,40 @@ public class DashboardFragment extends Fragment {
                 return;
             }
 
-            int qty = Integer.parseInt(qtyStr);
-            if (qty <= 0 || qty > mSelectedBorrowItem.getQuantity()) {
-                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
-                return;
-            }
+            // Check if borrower already has an active loan
+            SupplyLab.get(getActivity()).getActiveBorrowRecordsAsync(activeRecords -> {
+                boolean alreadyHasLoan = activeRecords.stream()
+                        .anyMatch(record -> record.getBorrowerName().equalsIgnoreCase(borrower));
 
-            SupplyLab.get(getActivity()).borrowItemAsync(
-                    mSelectedBorrowItem.getId(),
-                    borrower,
-                    qty,
-                    System.currentTimeMillis(),
-                    mExpectedReturnDate.getTimeInMillis(),
-                    success -> {
-                        if (success) {
-                            Toast.makeText(getActivity(), "Item issued successfully", Toast.LENGTH_SHORT).show();
-                            updateStats();
-                            loadRecentActivity();
-                            bottomSheetDialog.dismiss();
-                        } else {
-                            Toast.makeText(getActivity(), "Error issuing item", Toast.LENGTH_SHORT).show();
+                if (alreadyHasLoan) {
+                    Toast.makeText(getActivity(), "Action Refused: User already has an unreturned item.", Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                int qty = Integer.parseInt(qtyStr);
+                if (qty <= 0 || qty > mSelectedBorrowItem.getQuantity()) {
+                    Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                SupplyLab.get(getActivity()).borrowItemAsync(
+                        mSelectedBorrowItem.getId(),
+                        borrower,
+                        qty,
+                        System.currentTimeMillis(),
+                        mExpectedReturnDate.getTimeInMillis(),
+                        success -> {
+                            if (success) {
+                                Toast.makeText(getActivity(), "Item issued successfully", Toast.LENGTH_SHORT).show();
+                                updateStats();
+                                loadRecentActivity();
+                                bottomSheetDialog.dismiss();
+                            } else {
+                                Toast.makeText(getActivity(), "Error issuing item", Toast.LENGTH_SHORT).show();
+                            }
                         }
-                    }
-            );
+                );
+            });
         });
 
         bottomSheetDialog.show();
@@ -311,22 +409,61 @@ public class DashboardFragment extends Fragment {
         SupplyLab.get(getActivity()).getActiveBorrowRecordsAsync(borrows -> {
             int count = 0;
             LayoutInflater inflater = LayoutInflater.from(requireContext());
+            long currentTime = System.currentTimeMillis();
+
             for (BorrowRecord record : borrows) {
-                if (count >= 3) break;
+                if (count >= 5) break; // Increased to show more activity
                 
                 View activityView = inflater.inflate(R.layout.list_item_activity, mRecentActivityContainer, false);
                 TextView title = activityView.findViewById(R.id.activity_title);
                 TextView subtitle = activityView.findViewById(R.id.activity_subtitle);
                 TextView time = activityView.findViewById(R.id.activity_time);
+                View icon = activityView.findViewById(R.id.activity_icon);
                 
-                title.setText("Item On Loan");
+                boolean isOverdue = record.getExpectedReturnDate() != null && 
+                                   record.getExpectedReturnDate().getTime() < currentTime;
+
+                if (isOverdue) {
+                    title.setText("OVERDUE ITEM");
+                    title.setTextColor(Color.RED);
+                    subtitle.setTextColor(Color.RED);
+                    icon.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.color_error));
+                } else {
+                    title.setText("Item On Loan");
+                    title.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+                    subtitle.setTextColor(ContextCompat.getColor(requireContext(), R.color.text_secondary));
+                    icon.setBackgroundTintList(ContextCompat.getColorStateList(requireContext(), R.color.primary_purple));
+                }
+
                 SupplyItem item = SupplyLab.get(getActivity()).getItem(record.getItemId());
                 String itemName = item != null ? item.getName() : "Item";
                 subtitle.setText(record.getBorrowerName() + " has " + record.getQuantity() + " " + itemName);
                 
                 SimpleDateFormat sdf = new SimpleDateFormat("MMM dd", Locale.getDefault());
                 time.setText(sdf.format(record.getDateBorrowed()));
-                
+
+                activityView.setOnClickListener(v1 -> {
+                    long currentSelection = record.getExpectedReturnDate() != null ? 
+                            record.getExpectedReturnDate().getTime() : System.currentTimeMillis();
+                            
+                    MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
+                            .setTitleText("Update Due Date")
+                            .setSelection(currentSelection)
+                            .build();
+
+                    datePicker.addOnPositiveButtonClickListener(selection -> {
+                        record.setExpectedReturnDate(new java.util.Date(selection));
+                        SupplyLab.get(getActivity()).updateBorrowRecordAsync(record, success -> {
+                            if (success) {
+                                Toast.makeText(getActivity(), "Due date updated", Toast.LENGTH_SHORT).show();
+                                loadRecentActivity();
+                                checkOverdueItems();
+                            }
+                        });
+                    });
+                    datePicker.show(getParentFragmentManager(), "UPDATE_DATE_PICKER");
+                });
+
                 mRecentActivityContainer.addView(activityView);
                 count++;
             }
@@ -341,6 +478,69 @@ public class DashboardFragment extends Fragment {
         });
     }
 
+    private void createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            CharSequence name = "SupplyFlow Alerts";
+            String description = "Notifications for items that have not been returned on time";
+            int importance = NotificationManager.IMPORTANCE_HIGH;
+            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
+            channel.setDescription(description);
+            NotificationManager notificationManager = getActivity().getSystemService(NotificationManager.class);
+            notificationManager.createNotificationChannel(channel);
+        }
+    }
+
+    private void checkAndRequestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
+            } else {
+                checkOverdueItems();
+            }
+        } else {
+            checkOverdueItems();
+        }
+    }
+
+    private void checkOverdueItems() {
+        if (!isAdded() || sCheckedOverdueThisSession) return;
+        sCheckedOverdueThisSession = true;
+
+        SupplyLab.get(requireActivity()).getActiveBorrowRecordsAsync(borrows -> {
+            if (!isAdded()) return;
+            long currentTime = System.currentTimeMillis();
+            List<BorrowRecord> overdueRecords = borrows.stream()
+                    .filter(r -> r.getExpectedReturnDate() != null && r.getExpectedReturnDate().getTime() < currentTime)
+                    .collect(Collectors.toList());
+
+            Log.d(TAG, "Checking overdue items. Found: " + overdueRecords.size());
+            if (!overdueRecords.isEmpty()) {
+                sendOverdueNotification(overdueRecords.size());
+            }
+        });
+    }
+
+    private void sendOverdueNotification(int count) {
+        Intent intent = new Intent(getActivity(), InventoryActivity.class);
+        PendingIntent pendingIntent = PendingIntent.getActivity(getActivity(), 0, intent, PendingIntent.FLAG_IMMUTABLE);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.stat_sys_warning)
+                .setContentTitle("Overdue Items Alert")
+                .setContentText("There are " + count + " items past their expected return date!")
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .setColor(Color.RED);
+
+        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(requireContext());
+        try {
+            notificationManager.notify(NOTIFICATION_ID, builder.build());
+        } catch (SecurityException e) {
+            // Permission not granted
+        }
+    }
+
     private void updateDateButtonText(MaterialButton button) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
         button.setText("Due Date: " + dateFormat.format(mExpectedReturnDate.getTime()));
@@ -351,6 +551,7 @@ public class DashboardFragment extends Fragment {
         super.onResume();
         updateStats();
         loadRecentActivity();
+        checkAndRequestNotificationPermission();
     }
 
     private void updateStats() {

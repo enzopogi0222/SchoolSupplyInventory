@@ -70,7 +70,10 @@
             app:boxCornerRadiusBottomStart="16dp"
             app:boxCornerRadiusTopEnd="16dp"
             app:boxCornerRadiusTopStart="16dp"
-            app:startIconDrawable="@android:drawable/ic_menu_myplaces">
+            app:startIconDrawable="@android:drawable/ic_menu_myplaces"
+            app:endIconMode="custom"
+            app:endIconDrawable="@android:drawable/ic_menu_camera"
+            app:endIconContentDescription="Scan ID">
 
             <com.google.android.material.textfield.TextInputEditText
                 android:id="@+id/borrower_name_edit"
@@ -107,6 +110,49 @@
         android:text="Expected Return Date"
         app:cornerRadius="16dp"
         app:icon="@android:drawable/ic_menu_today" />
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none">
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/quick_date_chips"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_1day"
+                style="@style/Widget.Material3.Chip.Suggestion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1 Day" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_3days"
+                style="@style/Widget.Material3.Chip.Suggestion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="3 Days" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_1week"
+                style="@style/Widget.Material3.Chip.Suggestion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1 Week" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chip_1month"
+                style="@style/Widget.Material3.Chip.Suggestion"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="1 Month" />
+
+        </com.google.android.material.chip.ChipGroup>
+    </HorizontalScrollView>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_confirm_borrow"

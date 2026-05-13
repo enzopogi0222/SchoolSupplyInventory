@@ -27,6 +27,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         int quantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.QUANTITY));
         String location = getString(getColumnIndexOrThrow(SupplyTable.Cols.LOCATION));
         String propertyTag = getString(getColumnIndexOrThrow(SupplyTable.Cols.PROPERTY_TAG));
+        int isBorrowable = getInt(getColumnIndexOrThrow(SupplyTable.Cols.IS_BORROWABLE));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
@@ -39,6 +40,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         item.setCategory(categoryName != null ? categoryName : "OTHER");
         item.setRoom(roomName != null ? roomName : "ITE OFFICE");
         item.setPropertyTag(propertyTag != null ? propertyTag : "");
+        item.setBorrowable(isBorrowable != 0);
 
         return item;
     }

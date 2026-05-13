@@ -17,6 +17,7 @@ public class SupplyItem {
     private int mQuantity;
     private String mLocation;
     private String mPropertyTag; // Added for tracking fixed assets like Aircon, TV
+    private boolean mIsBorrowable;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -30,6 +31,7 @@ public class SupplyItem {
         mQuantity = 1;
         mLocation = "";
         mPropertyTag = "";
+        mIsBorrowable = true;
     }
 
     public SupplyItem(String name, boolean isBorrowed) {
@@ -64,6 +66,14 @@ public class SupplyItem {
 
     public void setBorrowed(boolean borrowed) {
         mBorrowed = borrowed;
+    }
+
+    public boolean isBorrowable() {
+        return mIsBorrowable;
+    }
+
+    public void setBorrowable(boolean borrowable) {
+        mIsBorrowable = borrowable;
     }
 
     public String getCategory() {

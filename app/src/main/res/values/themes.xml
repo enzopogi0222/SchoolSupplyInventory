@@ -1,6 +1,6 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Base.Theme.SchoolSupplyInventory" parent="Theme.Material3.Light.NoActionBar">
+    <style name="Base.Theme.SupplyFlow" parent="Theme.Material3.Light.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
 
@@ -27,7 +27,7 @@
         <item name="android:windowLightNavigationBar" tools:targetApi="o">true</item>
     </style>
 
-    <style name="Theme.SchoolSupplyInventory" parent="Base.Theme.SchoolSupplyInventory" />
+    <style name="Theme.SupplyFlow" parent="Base.Theme.SupplyFlow" />
 
     <!-- Modern Card Style -->
     <style name="Widget.App.CardView" parent="Widget.Material3.CardView.Filled">

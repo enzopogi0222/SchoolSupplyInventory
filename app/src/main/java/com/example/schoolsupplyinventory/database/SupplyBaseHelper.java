@@ -12,7 +12,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 10;
+    private static final int VERSION = 11;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -33,7 +33,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.ROOM + ", " +
                 SupplyTable.Cols.QUANTITY + ", " +
                 SupplyTable.Cols.LOCATION + ", " +
-                SupplyTable.Cols.PROPERTY_TAG + ")"
+                SupplyTable.Cols.PROPERTY_TAG + ", " +
+                SupplyTable.Cols.IS_BORROWABLE + ")"
         );
 
         db.execSQL("create table " + UserTable.NAME + "(" +
@@ -125,6 +126,9 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 10) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.PROPERTY_TAG);
             createRoomTable(db);
+        }
+        if (oldVersion < 11) {
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.IS_BORROWABLE + " integer default 1");
         }
     }
 }
