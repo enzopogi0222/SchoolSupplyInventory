@@ -7,12 +7,13 @@ import android.database.sqlite.SQLiteOpenHelper;
 
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.HistoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 13;
+    private static final int VERSION = 14;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -45,12 +46,14 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 " _id integer primary key autoincrement, " +
                 UserTable.Cols.UUID + ", " +
                 UserTable.Cols.NAME + ", " +
-                UserTable.Cols.BARCODE + ")"
+                UserTable.Cols.BARCODE + ", " +
+                UserTable.Cols.EMAIL + ")"
         );
 
         createBorrowTable(db);
         createCategoryTable(db);
         createRoomTable(db);
+        createHistoryTable(db);
     }
 
     private void createBorrowTable(SQLiteDatabase db) {
@@ -73,8 +76,12 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 " _id integer primary key autoincrement, " +
                 CategoryTable.Cols.NAME + " UNIQUE)"
         );
-        // Initial categories
-        String[] initials = {"STATIONERY", "ELECTRONICS", "BOOKS", "FURNITURE", "APPLIANCES"};
+        // Initial categories based on user requirements
+        String[] initials = {
+            "BOND PAPER", "PENS & MARKERS", "CLEANING MATERIALS", 
+            "LABORATORY EQUIPMENT", "SPORTS EQUIPMENT", "OFFICE SUPPLIES", 
+            "ELECTRONICS", "STATIONERY", "BOOKS", "FURNITURE", "APPLIANCES"
+        };
         for (String cat : initials) {
             ContentValues values = new ContentValues();
             values.put(CategoryTable.Cols.NAME, cat);
@@ -94,6 +101,19 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
             values.put(RoomTable.Cols.NAME, room);
             db.insert(RoomTable.NAME, null, values);
         }
+    }
+
+    private void createHistoryTable(SQLiteDatabase db) {
+        db.execSQL("create table " + HistoryTable.NAME + "(" +
+                " _id integer primary key autoincrement, " +
+                HistoryTable.Cols.UUID + ", " +
+                HistoryTable.Cols.ITEM_ID + ", " +
+                HistoryTable.Cols.ITEM_NAME + ", " +
+                HistoryTable.Cols.ACTION + ", " +
+                HistoryTable.Cols.USER + ", " +
+                HistoryTable.Cols.TIMESTAMP + ", " +
+                HistoryTable.Cols.DETAILS + ")"
+        );
     }
 
     @Override
@@ -140,11 +160,14 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
             db.execSQL("update " + BorrowTable.NAME + " set " + BorrowTable.Cols.INITIAL_QUANTITY + " = " + BorrowTable.Cols.QUANTITY);
         }
         if (oldVersion < 13) {
-            // Check if columns exist before adding them (standard practice for upgrades)
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.EXPIRATION_DATE + " integer");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.SUPPLIER + " text");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.UNIT + " text default 'pcs'");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.BARCODE + " text");
+            db.execSQL("alter table " + UserTable.NAME + " add column " + UserTable.Cols.EMAIL + " text");
+        }
+        if (oldVersion < 14) {
+            createHistoryTable(db);
         }
     }
 }

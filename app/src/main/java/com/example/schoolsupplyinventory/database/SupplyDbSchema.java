@@ -31,6 +31,7 @@ public class SupplyDbSchema {
             public static final String UUID = "uuid";
             public static final String NAME = "name";
             public static final String BARCODE = "barcode";
+            public static final String EMAIL = "email";
         }
     }
 
@@ -61,6 +62,19 @@ public class SupplyDbSchema {
         public static final String NAME = "rooms";
         public static final class Cols {
             public static final String NAME = "name";
+        }
+    }
+
+    public static final class HistoryTable {
+        public static final String NAME = "inventory_history";
+        public static final class Cols {
+            public static final String UUID = "uuid";
+            public static final String ITEM_ID = "item_id";
+            public static final String ITEM_NAME = "item_name";
+            public static final String ACTION = "action"; // "ADDED", "EDITED", "DELETED", "BORROWED", "RETURNED"
+            public static final String USER = "user";
+            public static final String TIMESTAMP = "timestamp";
+            public static final String DETAILS = "details";
         }
     }
 }

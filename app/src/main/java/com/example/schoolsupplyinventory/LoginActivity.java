@@ -28,6 +28,7 @@ public class LoginActivity extends AppCompatActivity {
 
             // Mock authentication
             if (email.equals("admin@supplyflow.com") && password.equals("password")) {
+                SupplyLab.get(this).setCurrentUser(email);
                 Intent intent = new Intent(LoginActivity.this, InventoryActivity.class);
                 startActivity(intent);
                 finish();

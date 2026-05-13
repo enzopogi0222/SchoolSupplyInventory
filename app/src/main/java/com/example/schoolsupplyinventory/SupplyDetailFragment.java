@@ -59,6 +59,7 @@ public class SupplyDetailFragment extends Fragment {
     private boolean mIsNewItem = false;
     
     private TextInputEditText mTitleField;
+    private TextInputEditText mBrandField;
     private TextInputEditText mQuantityField;
     private TextInputEditText mUnitField;
     private TextInputEditText mSupplierField;
@@ -152,6 +153,10 @@ public class SupplyDetailFragment extends Fragment {
         mTitleField = v.findViewById(R.id.supply_title);
         mTitleField.setText(mItem.getName());
         mTitleField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setName(s)));
+
+        mBrandField = v.findViewById(R.id.supply_brand);
+        mBrandField.setText(mItem.getBrand());
+        mBrandField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBrand(s)));
 
         mCategoryDropdown = v.findViewById(R.id.supply_category);
         updateCategoryList();

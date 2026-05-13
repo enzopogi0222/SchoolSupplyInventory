@@ -11,6 +11,7 @@ import com.example.schoolsupplyinventory.database.SupplyBaseHelper;
 import com.example.schoolsupplyinventory.database.SupplyCursorWrapper;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.BorrowTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.CategoryTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.HistoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
@@ -29,6 +30,7 @@ public class SupplyLab {
     private SQLiteDatabase mDatabase;
     private final ExecutorService mExecutor = Executors.newFixedThreadPool(4);
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+    private String mCurrentUser = "admin@supplyflow.com"; // Default for demo
 
     public interface Callback<T> {
         void onComplete(T result);
@@ -46,6 +48,10 @@ public class SupplyLab {
         mDatabase = new SupplyBaseHelper(mContext).getWritableDatabase();
     }
 
+    public void setCurrentUser(String email) {
+        mCurrentUser = email;
+    }
+
     public void addSupply(SupplyItem s) {
         addSupply(s, null);
     }
@@ -54,6 +60,7 @@ public class SupplyLab {
         mExecutor.execute(() -> {
             ContentValues values = getContentValues(s);
             mDatabase.insert(SupplyTable.NAME, null, values);
+            logHistory(s.getId(), s.getName(), "ADDED", "Item added to inventory. Initial quantity: " + s.getQuantity());
             if (callback != null) {
                 mMainHandler.post(() -> callback.onComplete(null));
             }
@@ -64,6 +71,7 @@ public class SupplyLab {
         mExecutor.execute(() -> {
             String uuidString = s.getId().toString();
             mDatabase.delete(SupplyTable.NAME, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
+            logHistory(s.getId(), s.getName(), "DELETED", "Item removed from inventory");
             
             File photoFile = getPhotoFile(s);
             if (photoFile != null && photoFile.exists()) {
@@ -117,11 +125,25 @@ public class SupplyLab {
 
     public void updateSupply(SupplyItem item) {
         mExecutor.execute(() -> {
+            SupplyItem oldItem = getItem(item.getId());
+            String details = "";
+            if (oldItem != null) {
+                if (oldItem.getQuantity() != item.getQuantity()) {
+                    details = "Quantity changed from " + oldItem.getQuantity() + " to " + item.getQuantity();
+                } else if (!oldItem.getName().equals(item.getName())) {
+                    details = "Name changed to " + item.getName();
+                } else {
+                    details = "Item details updated";
+                }
+            }
+
             String uuidString = item.getId().toString();
             ContentValues values = getContentValues(item);
             mDatabase.update(SupplyTable.NAME, values,
                     SupplyTable.Cols.UUID + " = ?",
                     new String[]{uuidString});
+            
+            logHistory(item.getId(), item.getName(), "EDITED", details);
         });
     }
 
@@ -136,7 +158,8 @@ public class SupplyLab {
         SupplyItem item = getItem(itemId);
         if (item == null || item.getQuantity() < quantity) return false;
 
-        item.setQuantity(item.getQuantity() - quantity);
+        int oldQty = item.getQuantity();
+        item.setQuantity(oldQty - quantity);
         item.setBorrowed(true);
         item.setBorrower(borrowerName);
         
@@ -154,6 +177,9 @@ public class SupplyLab {
         values.put(BorrowTable.Cols.STATUS, "Borrowed");
 
         mDatabase.insert(BorrowTable.NAME, null, values);
+
+        logHistory(itemId, item.getName(), "BORROWED", "Borrowed " + quantity + " by " + borrowerName + ". Stock: " + oldQty + " -> " + item.getQuantity());
+
         return true;
     }
 
@@ -166,9 +192,10 @@ public class SupplyLab {
 
     private boolean returnItem(BorrowRecord record, int returnQuantity) {
         SupplyItem item = getItem(record.getItemId());
-        
+        int oldQty = 0;
         if (item != null) {
-            item.setQuantity(item.getQuantity() + returnQuantity);
+            oldQty = item.getQuantity();
+            item.setQuantity(oldQty + returnQuantity);
         }
         
         ContentValues values = new ContentValues();
@@ -194,9 +221,47 @@ public class SupplyLab {
             
             ContentValues itemValues = getContentValues(item);
             mDatabase.update(SupplyTable.NAME, itemValues, SupplyTable.Cols.UUID + " = ?", new String[]{item.getId().toString()});
+            
+            logHistory(item.getId(), item.getName(), "RETURNED", "Returned " + returnQuantity + " from " + record.getBorrowerName() + ". Stock: " + oldQty + " -> " + item.getQuantity());
         }
         
         return true;
+    }
+
+    private void logHistory(UUID itemId, String itemName, String action, String details) {
+        ContentValues values = new ContentValues();
+        values.put(HistoryTable.Cols.UUID, UUID.randomUUID().toString());
+        values.put(HistoryTable.Cols.ITEM_ID, itemId.toString());
+        values.put(HistoryTable.Cols.ITEM_NAME, itemName);
+        values.put(HistoryTable.Cols.ACTION, action);
+        values.put(HistoryTable.Cols.USER, mCurrentUser);
+        values.put(HistoryTable.Cols.TIMESTAMP, System.currentTimeMillis());
+        values.put(HistoryTable.Cols.DETAILS, details);
+        mDatabase.insert(HistoryTable.NAME, null, values);
+    }
+
+    public void getHistoryForItemAsync(UUID itemId, Callback<List<HistoryRecord>> callback) {
+        mExecutor.execute(() -> {
+            List<HistoryRecord> records = new ArrayList<>();
+            Cursor cursor = mDatabase.query(HistoryTable.NAME, null, HistoryTable.Cols.ITEM_ID + " = ?", new String[]{itemId.toString()}, null, null, HistoryTable.Cols.TIMESTAMP + " DESC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    HistoryRecord record = new HistoryRecord(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.UUID))));
+                    record.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_ID))));
+                    record.setItemName(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_NAME)));
+                    record.setAction(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ACTION)));
+                    record.setUser(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.USER)));
+                    record.setTimestamp(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(HistoryTable.Cols.TIMESTAMP))));
+                    record.setDetails(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.DETAILS)));
+                    records.add(record);
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(records));
+        });
     }
 
     public void updateBorrowRecordAsync(BorrowRecord record, Callback<Boolean> callback) {
