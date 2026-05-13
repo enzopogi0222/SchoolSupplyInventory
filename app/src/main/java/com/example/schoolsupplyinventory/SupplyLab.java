@@ -19,7 +19,9 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -247,20 +249,86 @@ public class SupplyLab {
             try {
                 cursor.moveToFirst();
                 while (!cursor.isAfterLast()) {
-                    HistoryRecord record = new HistoryRecord(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.UUID))));
-                    record.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_ID))));
-                    record.setItemName(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_NAME)));
-                    record.setAction(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ACTION)));
-                    record.setUser(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.USER)));
-                    record.setTimestamp(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(HistoryTable.Cols.TIMESTAMP))));
-                    record.setDetails(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.DETAILS)));
-                    records.add(record);
+                    records.add(getHistoryRecordFromCursor(cursor));
                     cursor.moveToNext();
                 }
             } finally {
                 cursor.close();
             }
             mMainHandler.post(() -> callback.onComplete(records));
+        });
+    }
+
+    public void getAllHistoryAsync(Callback<List<HistoryRecord>> callback) {
+        mExecutor.execute(() -> {
+            List<HistoryRecord> records = new ArrayList<>();
+            Cursor cursor = mDatabase.query(HistoryTable.NAME, null, null, null, null, null, HistoryTable.Cols.TIMESTAMP + " DESC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    records.add(getHistoryRecordFromCursor(cursor));
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(records));
+        });
+    }
+
+    private HistoryRecord getHistoryRecordFromCursor(Cursor cursor) {
+        HistoryRecord record = new HistoryRecord(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.UUID))));
+        record.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_ID))));
+        record.setItemName(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_NAME)));
+        record.setAction(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ACTION)));
+        record.setUser(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.USER)));
+        record.setTimestamp(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(HistoryTable.Cols.TIMESTAMP))));
+        record.setDetails(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.DETAILS)));
+        return record;
+    }
+
+    public void getTopBorrowedItemsAsync(int limit, Callback<List<Map.Entry<String, Integer>>> callback) {
+        mExecutor.execute(() -> {
+            Map<String, Integer> usage = new HashMap<>();
+            String query = "SELECT s." + SupplyTable.Cols.TITLE + ", SUM(b." + BorrowTable.Cols.INITIAL_QUANTITY + ") as total " +
+                           "FROM " + BorrowTable.NAME + " b " +
+                           "JOIN " + SupplyTable.NAME + " s ON b." + BorrowTable.Cols.ITEM_ID + " = s." + SupplyTable.Cols.UUID + " " +
+                           "GROUP BY b." + BorrowTable.Cols.ITEM_ID + " " +
+                           "ORDER BY total DESC LIMIT " + limit;
+            Cursor cursor = mDatabase.rawQuery(query, null);
+            try {
+                if (cursor.moveToFirst()) {
+                    do {
+                        usage.put(cursor.getString(0), cursor.getInt(1));
+                    } while (cursor.moveToNext());
+                }
+            } finally {
+                cursor.close();
+            }
+            List<Map.Entry<String, Integer>> result = new ArrayList<>(usage.entrySet());
+            result.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+            mMainHandler.post(() -> callback.onComplete(result));
+        });
+    }
+
+    public void getUsageByRoomAsync(Callback<Map<String, Integer>> callback) {
+        mExecutor.execute(() -> {
+            Map<String, Integer> roomUsage = new HashMap<>();
+            String query = "SELECT s." + SupplyTable.Cols.ROOM + ", SUM(b." + BorrowTable.Cols.INITIAL_QUANTITY + ") " +
+                           "FROM " + BorrowTable.NAME + " b " +
+                           "JOIN " + SupplyTable.NAME + " s ON b." + BorrowTable.Cols.ITEM_ID + " = s." + SupplyTable.Cols.UUID + " " +
+                           "GROUP BY s." + SupplyTable.Cols.ROOM;
+            Cursor cursor = mDatabase.rawQuery(query, null);
+            try {
+                if (cursor.moveToFirst()) {
+                    do {
+                        roomUsage.put(cursor.getString(0), cursor.getInt(1));
+                    } while (cursor.moveToNext());
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(roomUsage));
         });
     }
 
