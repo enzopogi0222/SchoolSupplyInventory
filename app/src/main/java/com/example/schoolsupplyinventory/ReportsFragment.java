@@ -102,7 +102,8 @@ public class ReportsFragment extends Fragment {
                 if (record.getDateBorrowed() != null) {
                     cal.setTime(record.getDateBorrowed());
                     int month = cal.get(Calendar.MONTH);
-                    monthlyTotals[month] += record.getQuantity();
+                    // Use initial quantity so returns don't decrease the trend data
+                    monthlyTotals[month] += record.getInitialQuantity();
                 }
             }
 

@@ -18,25 +18,35 @@ public class SupplyCursorWrapper extends CursorWrapper {
     public SupplyItem getSupply() {
         String uuidString = getString(getColumnIndexOrThrow(SupplyTable.Cols.UUID));
         String title = getString(getColumnIndexOrThrow(SupplyTable.Cols.TITLE));
+        String brand = getString(getColumnIndexOrThrow(SupplyTable.Cols.BRAND));
         long date = getLong(getColumnIndexOrThrow(SupplyTable.Cols.DATE));
+        long expirationDate = getLong(getColumnIndexOrThrow(SupplyTable.Cols.EXPIRATION_DATE));
         int isBorrowed = getInt(getColumnIndexOrThrow(SupplyTable.Cols.BORROWED));
         String categoryName = getString(getColumnIndexOrThrow(SupplyTable.Cols.CATEGORY));
-        String brand = getString(getColumnIndexOrThrow(SupplyTable.Cols.BRAND));
+        String supplier = getString(getColumnIndexOrThrow(SupplyTable.Cols.SUPPLIER));
         String borrower = getString(getColumnIndexOrThrow(SupplyTable.Cols.BORROWER));
         String roomName = getString(getColumnIndexOrThrow(SupplyTable.Cols.ROOM));
         int quantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.QUANTITY));
+        String unit = getString(getColumnIndexOrThrow(SupplyTable.Cols.UNIT));
         String location = getString(getColumnIndexOrThrow(SupplyTable.Cols.LOCATION));
+        String barcode = getString(getColumnIndexOrThrow(SupplyTable.Cols.BARCODE));
         String propertyTag = getString(getColumnIndexOrThrow(SupplyTable.Cols.PROPERTY_TAG));
         int isBorrowable = getInt(getColumnIndexOrThrow(SupplyTable.Cols.IS_BORROWABLE));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
-        item.setDate(new Date(date));
-        item.setBorrowed(isBorrowed != 0);
         item.setBrand(brand);
+        item.setDate(new Date(date));
+        if (expirationDate != 0) {
+            item.setExpirationDate(new Date(expirationDate));
+        }
+        item.setBorrowed(isBorrowed != 0);
+        item.setSupplier(supplier);
         item.setBorrower(borrower);
         item.setQuantity(quantity);
+        item.setUnit(unit != null ? unit : "pcs");
         item.setLocation(location);
+        item.setBarcode(barcode);
         item.setCategory(categoryName != null ? categoryName : "OTHER");
         item.setRoom(roomName != null ? roomName : "ITE OFFICE");
         item.setPropertyTag(propertyTag != null ? propertyTag : "");

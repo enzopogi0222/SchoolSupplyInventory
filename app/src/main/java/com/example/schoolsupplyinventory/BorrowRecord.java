@@ -8,6 +8,7 @@ public class BorrowRecord {
     private UUID mItemId;
     private String mBorrowerName;
     private int mQuantity;
+    private int mInitialQuantity;
     private Date mDateBorrowed;
     private Date mExpectedReturnDate;
     private Date mActualReturnDate;
@@ -49,6 +50,14 @@ public class BorrowRecord {
 
     public void setQuantity(int quantity) {
         mQuantity = quantity;
+    }
+
+    public int getInitialQuantity() {
+        return mInitialQuantity;
+    }
+
+    public void setInitialQuantity(int initialQuantity) {
+        mInitialQuantity = initialQuantity;
     }
 
     public Date getDateBorrowed() {

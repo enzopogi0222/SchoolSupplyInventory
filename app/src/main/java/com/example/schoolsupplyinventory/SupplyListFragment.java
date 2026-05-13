@@ -124,16 +124,16 @@ public class SupplyListFragment extends Fragment {
         List<SupplyItem> filteredList = mAllItems.stream()
                 .filter(item -> {
                     String name = item.getName() != null ? item.getName().toLowerCase() : "";
-                    String brand = item.getBrand() != null ? item.getBrand().toLowerCase() : "";
+                    String supplier = item.getSupplier() != null ? item.getSupplier().toLowerCase() : "";
                     String category = item.getCategory() != null ? item.getCategory().toLowerCase() : "";
                     String room = item.getRoom() != null ? item.getRoom().toLowerCase() : "";
-                    String tag = item.getPropertyTag() != null ? item.getPropertyTag().toLowerCase() : "";
+                    String barcode = item.getBarcode() != null ? item.getBarcode().toLowerCase() : "";
                     
                     boolean matchesQuery = name.contains(query) || 
-                                          brand.contains(query) || 
+                                          supplier.contains(query) ||
                                           category.contains(query) || 
                                           room.contains(query) || 
-                                          tag.contains(query);
+                                          barcode.contains(query);
 
                     boolean matchesChip = true;
                     if (checkedId == R.id.chip_available) {
@@ -230,7 +230,7 @@ public class SupplyListFragment extends Fragment {
     }
 
     private class SupplyHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        private TextView mTitleTextView, mBrandTextView, mCategoryTextView, mRoomTextView, mStatusTextView, mQuantityTextView;
+        private TextView mTitleTextView, mSupplierTextView, mCategoryTextView, mRoomTextView, mStatusTextView, mQuantityTextView;
         private ImageView mPhotoThumbnail;
         private SupplyItem mItem;
         private String mCurrentPhotoPath;
@@ -239,7 +239,7 @@ public class SupplyListFragment extends Fragment {
             super(inflater.inflate(R.layout.list_item_supply, parent, false));
             itemView.setOnClickListener(this);
             mTitleTextView = itemView.findViewById(R.id.item_title);
-            mBrandTextView = itemView.findViewById(R.id.item_brand);
+            mSupplierTextView = itemView.findViewById(R.id.item_supplier);
             mCategoryTextView = itemView.findViewById(R.id.item_category);
             mRoomTextView = itemView.findViewById(R.id.item_room);
             mStatusTextView = itemView.findViewById(R.id.item_status);
@@ -250,10 +250,10 @@ public class SupplyListFragment extends Fragment {
         public void bind(SupplyItem item) {
             mItem = item;
             mTitleTextView.setText(mItem.getName() != null && !mItem.getName().isEmpty() ? mItem.getName() : "Unnamed Item");
-            mBrandTextView.setText(mItem.getBrand() != null && !mItem.getBrand().isEmpty() ? mItem.getBrand() : "No Brand");
-            mCategoryTextView.setText(mItem.getCategory() != null ? mItem.getCategory() : "");
+            mSupplierTextView.setText(mItem.getSupplier() != null && !mItem.getSupplier().isEmpty() ? mItem.getSupplier() : "No Supplier");
+            mCategoryTextView.setText(mItem.getCategory() != null ? mItem.getCategory() : "OTHER");
             mRoomTextView.setText("• " + (mItem.getRoom() != null ? mItem.getRoom() : "No Room"));
-            mQuantityTextView.setText("In Stock: " + mItem.getQuantity());
+            mQuantityTextView.setText("Stock: " + mItem.getQuantity() + " " + (mItem.getUnit() != null ? mItem.getUnit() : "pcs"));
             
             if (mItem.isBorrowed()) {
                 mStatusTextView.setText("BORROWED");
@@ -262,7 +262,7 @@ public class SupplyListFragment extends Fragment {
                 mStatusTextView.setText("AVAILABLE");
                 mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_success));
             } else {
-                mStatusTextView.setText("NOT AVAILABLE");
+                mStatusTextView.setText("OUT OF STOCK");
                 mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_error));
             }
 

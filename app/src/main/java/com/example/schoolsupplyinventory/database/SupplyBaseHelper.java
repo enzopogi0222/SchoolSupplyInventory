@@ -12,7 +12,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 11;
+    private static final int VERSION = 13;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -25,14 +25,18 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 " _id integer primary key autoincrement, " +
                 SupplyTable.Cols.UUID + ", " +
                 SupplyTable.Cols.TITLE + ", " +
+                SupplyTable.Cols.BRAND + ", " +
                 SupplyTable.Cols.DATE + ", " +
+                SupplyTable.Cols.EXPIRATION_DATE + ", " +
                 SupplyTable.Cols.BORROWED + ", " +
                 SupplyTable.Cols.CATEGORY + ", " +
-                SupplyTable.Cols.BRAND + ", " +
+                SupplyTable.Cols.SUPPLIER + ", " +
                 SupplyTable.Cols.BORROWER + ", " +
                 SupplyTable.Cols.ROOM + ", " +
                 SupplyTable.Cols.QUANTITY + ", " +
+                SupplyTable.Cols.UNIT + ", " +
                 SupplyTable.Cols.LOCATION + ", " +
+                SupplyTable.Cols.BARCODE + ", " +
                 SupplyTable.Cols.PROPERTY_TAG + ", " +
                 SupplyTable.Cols.IS_BORROWABLE + ")"
         );
@@ -56,6 +60,7 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 BorrowTable.Cols.ITEM_ID + ", " +
                 BorrowTable.Cols.BORROWER_NAME + ", " +
                 BorrowTable.Cols.QUANTITY + ", " +
+                BorrowTable.Cols.INITIAL_QUANTITY + ", " +
                 BorrowTable.Cols.DATE_BORROWED + ", " +
                 BorrowTable.Cols.EXPECTED_RETURN_DATE + ", " +
                 BorrowTable.Cols.ACTUAL_RETURN_DATE + ", " +
@@ -129,6 +134,17 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 11) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.IS_BORROWABLE + " integer default 1");
+        }
+        if (oldVersion < 12) {
+            db.execSQL("alter table " + BorrowTable.NAME + " add column " + BorrowTable.Cols.INITIAL_QUANTITY + " integer");
+            db.execSQL("update " + BorrowTable.NAME + " set " + BorrowTable.Cols.INITIAL_QUANTITY + " = " + BorrowTable.Cols.QUANTITY);
+        }
+        if (oldVersion < 13) {
+            // Check if columns exist before adding them (standard practice for upgrades)
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.EXPIRATION_DATE + " integer");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.SUPPLIER + " text");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.UNIT + " text default 'pcs'");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.BARCODE + " text");
         }
     }
 }

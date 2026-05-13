@@ -7,16 +7,20 @@ public class SupplyItem {
 
     private UUID mId;
     private String mName;
-    private Date mDate;
+    private String mBrand;
+    private Date mDate; // Date Added
+    private Date mExpirationDate;
     private boolean mBorrowed;
     private String mCategory;
-    private String mBrand;
+    private String mSupplier;
     private String mBorrower;
     private String mPhotoFilename;
-    private String mRoom; // Changed to String for dynamic room/classroom assignment
+    private String mRoom; // Storage location (Building/Room)
     private int mQuantity;
-    private String mLocation;
-    private String mPropertyTag; // Added for tracking fixed assets like Aircon, TV
+    private String mUnit;
+    private String mLocation; // Specific storage location (Shelf/Cabinet)
+    private String mBarcode;
+    private String mPropertyTag;
     private boolean mIsBorrowable;
 
     public SupplyItem() {
@@ -29,15 +33,11 @@ public class SupplyItem {
         mCategory = "STATIONERY";
         mRoom = "ITE OFFICE";
         mQuantity = 1;
+        mUnit = "pcs";
         mLocation = "";
         mPropertyTag = "";
+        mBarcode = "";
         mIsBorrowable = true;
-    }
-
-    public SupplyItem(String name, boolean isBorrowed) {
-        this();
-        mName = name;
-        mBorrowed = isBorrowed;
     }
 
     public UUID getId() {
@@ -52,12 +52,28 @@ public class SupplyItem {
         mName = name;
     }
 
+    public String getBrand() {
+        return mBrand;
+    }
+
+    public void setBrand(String brand) {
+        mBrand = brand;
+    }
+
     public Date getDate() {
         return mDate;
     }
 
     public void setDate(Date date) {
         mDate = date;
+    }
+
+    public Date getExpirationDate() {
+        return mExpirationDate;
+    }
+
+    public void setExpirationDate(Date expirationDate) {
+        mExpirationDate = expirationDate;
     }
 
     public boolean isBorrowed() {
@@ -84,12 +100,12 @@ public class SupplyItem {
         mCategory = category;
     }
 
-    public String getBrand() {
-        return mBrand;
+    public String getSupplier() {
+        return mSupplier;
     }
 
-    public void setBrand(String brand) {
-        mBrand = brand;
+    public void setSupplier(String supplier) {
+        mSupplier = supplier;
     }
 
     public String getBorrower() {
@@ -120,12 +136,28 @@ public class SupplyItem {
         mQuantity = quantity;
     }
 
+    public String getUnit() {
+        return mUnit;
+    }
+
+    public void setUnit(String unit) {
+        mUnit = unit;
+    }
+
     public String getLocation() {
         return mLocation;
     }
 
     public void setLocation(String location) {
         mLocation = location;
+    }
+
+    public String getBarcode() {
+        return mBarcode;
+    }
+
+    public void setBarcode(String barcode) {
+        mBarcode = barcode;
     }
 
     public String getPropertyTag() {

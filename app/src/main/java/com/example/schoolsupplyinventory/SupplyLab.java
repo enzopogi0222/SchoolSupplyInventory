@@ -148,6 +148,7 @@ public class SupplyLab {
         values.put(BorrowTable.Cols.ITEM_ID, itemId.toString());
         values.put(BorrowTable.Cols.BORROWER_NAME, borrowerName);
         values.put(BorrowTable.Cols.QUANTITY, quantity);
+        values.put(BorrowTable.Cols.INITIAL_QUANTITY, quantity);
         values.put(BorrowTable.Cols.DATE_BORROWED, dateBorrowed);
         values.put(BorrowTable.Cols.EXPECTED_RETURN_DATE, expectedReturnDate);
         values.put(BorrowTable.Cols.STATUS, "Borrowed");
@@ -255,8 +256,8 @@ public class SupplyLab {
     public void getReturnedCountAsync(Callback<Integer> callback) {
         mExecutor.execute(() -> {
             int count = 0;
-            Cursor cursor = mDatabase.query(BorrowTable.NAME, new String[]{"SUM(" + BorrowTable.Cols.QUANTITY + ")"}, 
-                BorrowTable.Cols.STATUS + " = ?", new String[]{"Returned"}, null, null, null);
+            Cursor cursor = mDatabase.query(BorrowTable.NAME, new String[]{"SUM(" + BorrowTable.Cols.INITIAL_QUANTITY + " - " + BorrowTable.Cols.QUANTITY + ")"},
+                BorrowTable.Cols.STATUS + " = 'Returned' OR " + BorrowTable.Cols.QUANTITY + " < " + BorrowTable.Cols.INITIAL_QUANTITY, null, null, null, null);
             try {
                 if (cursor.moveToFirst()) {
                     count = cursor.getInt(0);
@@ -341,6 +342,7 @@ public class SupplyLab {
         String itemIdStr = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.ITEM_ID));
         String borrower = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.BORROWER_NAME));
         int quantity = cursor.getInt(cursor.getColumnIndexOrThrow(BorrowTable.Cols.QUANTITY));
+        int initialQuantity = cursor.getInt(cursor.getColumnIndexOrThrow(BorrowTable.Cols.INITIAL_QUANTITY));
         long dateBorrowed = cursor.getLong(cursor.getColumnIndexOrThrow(BorrowTable.Cols.DATE_BORROWED));
         long expectedReturn = cursor.getLong(cursor.getColumnIndexOrThrow(BorrowTable.Cols.EXPECTED_RETURN_DATE));
         String status = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.STATUS));
@@ -349,6 +351,7 @@ public class SupplyLab {
         record.setItemId(UUID.fromString(itemIdStr));
         record.setBorrowerName(borrower);
         record.setQuantity(quantity);
+        record.setInitialQuantity(initialQuantity);
         record.setDateBorrowed(new Date(dateBorrowed));
         record.setExpectedReturnDate(new Date(expectedReturn));
         record.setStatus(status);
@@ -372,14 +375,20 @@ public class SupplyLab {
         ContentValues values = new ContentValues();
         values.put(SupplyTable.Cols.UUID, item.getId().toString());
         values.put(SupplyTable.Cols.TITLE, item.getName());
+        values.put(SupplyTable.Cols.BRAND, item.getBrand());
         values.put(SupplyTable.Cols.DATE, item.getDate().getTime());
+        if (item.getExpirationDate() != null) {
+            values.put(SupplyTable.Cols.EXPIRATION_DATE, item.getExpirationDate().getTime());
+        }
         values.put(SupplyTable.Cols.BORROWED, item.isBorrowed() ? 1 : 0);
         values.put(SupplyTable.Cols.CATEGORY, item.getCategory());
-        values.put(SupplyTable.Cols.BRAND, item.getBrand());
+        values.put(SupplyTable.Cols.SUPPLIER, item.getSupplier());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
         values.put(SupplyTable.Cols.ROOM, item.getRoom());
         values.put(SupplyTable.Cols.QUANTITY, item.getQuantity());
+        values.put(SupplyTable.Cols.UNIT, item.getUnit());
         values.put(SupplyTable.Cols.LOCATION, item.getLocation());
+        values.put(SupplyTable.Cols.BARCODE, item.getBarcode());
         values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
         values.put(SupplyTable.Cols.IS_BORROWABLE, item.isBorrowable() ? 1 : 0);
         return values;
