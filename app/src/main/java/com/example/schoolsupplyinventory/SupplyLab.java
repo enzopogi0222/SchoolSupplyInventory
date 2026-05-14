@@ -34,7 +34,7 @@ public class SupplyLab {
     private SQLiteDatabase mDatabase;
     private final ExecutorService mExecutor = Executors.newFixedThreadPool(4);
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
-    private String mCurrentUser = "admin@supplyflow.com"; // Default for demo
+    private String mCurrentUser = "admin@school.com"; // Single role: Admin
 
     public interface Callback<T> {
         void onComplete(T result);
@@ -52,22 +52,33 @@ public class SupplyLab {
         mDatabase = new SupplyBaseHelper(mContext).getWritableDatabase();
     }
 
-    public void setCurrentUser(String email) {
-        mCurrentUser = email;
+    public String getCurrentUser() {
+        return mCurrentUser;
     }
 
-    public void addSupply(SupplyItem s) {
-        addSupply(s, null);
+    public void setCurrentUser(String currentUser) {
+        mCurrentUser = currentUser;
     }
 
     public void addSupply(SupplyItem s, Callback<Void> callback) {
         mExecutor.execute(() -> {
             ContentValues values = getContentValues(s);
             mDatabase.insert(SupplyTable.NAME, null, values);
-            logHistory(s.getId(), s.getName(), "ADDED", "Item added to inventory. Initial quantity: " + s.getQuantity());
+            logHistory(s.getId(), s.getName(), "ADDED", "Item added to inventory. Initial quantity: " + s.getTotalQuantity());
             if (callback != null) {
                 mMainHandler.post(() -> callback.onComplete(null));
             }
+        });
+    }
+
+    public void updateSupply(SupplyItem item) {
+        mExecutor.execute(() -> {
+            String uuidString = item.getId().toString();
+            ContentValues values = getContentValues(item);
+            mDatabase.update(SupplyTable.NAME, values,
+                    SupplyTable.Cols.UUID + " = ?",
+                    new String[]{uuidString});
+            logHistory(item.getId(), item.getName(), "EDITED", "Item details updated");
         });
     }
 
@@ -76,18 +87,81 @@ public class SupplyLab {
             String uuidString = s.getId().toString();
             mDatabase.delete(SupplyTable.NAME, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
             logHistory(s.getId(), s.getName(), "DELETED", "Item removed from inventory");
-            
-            File photoFile = getPhotoFile(s);
-            if (photoFile != null && photoFile.exists()) {
-                photoFile.delete();
-            }
         });
     }
 
-    public void getItemsAsync(Callback<List<SupplyItem>> callback) {
+    public void useConsumableAsync(UUID itemId, int quantity, Callback<Boolean> callback) {
         mExecutor.execute(() -> {
-            List<SupplyItem> items = getItems();
-            mMainHandler.post(() -> callback.onComplete(items));
+            SupplyItem item = getItem(itemId);
+            if (item == null || !SupplyItem.TYPE_CONSUMABLE.equals(item.getItemType()) || item.getAvailableQuantity() < quantity) {
+                mMainHandler.post(() -> callback.onComplete(false));
+                return;
+            }
+
+            item.setAvailableQuantity(item.getAvailableQuantity() - quantity);
+            item.setUsedQuantity(item.getUsedQuantity() + quantity);
+            
+            updateSupply(item);
+            logHistory(item.getId(), item.getName(), "USED", "Consumed " + quantity + " " + item.getUnit());
+            mMainHandler.post(() -> callback.onComplete(true));
+        });
+    }
+
+    public void borrowItemAsync(UUID itemId, String borrowerName, int quantity, long dateBorrowed, long expectedReturnDate, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            SupplyItem item = getItem(itemId);
+            if (item == null || !SupplyItem.TYPE_BORROWABLE.equals(item.getItemType()) || item.getAvailableQuantity() < quantity) {
+                mMainHandler.post(() -> callback.onComplete(false));
+                return;
+            }
+
+            item.setAvailableQuantity(item.getAvailableQuantity() - quantity);
+            item.setBorrowedQuantity(item.getBorrowedQuantity() + quantity);
+            item.setStatus("Borrowed");
+            
+            updateSupply(item);
+
+            ContentValues values = new ContentValues();
+            values.put(BorrowTable.Cols.UUID, UUID.randomUUID().toString());
+            values.put(BorrowTable.Cols.ITEM_ID, itemId.toString());
+            values.put(BorrowTable.Cols.BORROWER_NAME, borrowerName);
+            values.put(BorrowTable.Cols.QUANTITY, quantity);
+            values.put(BorrowTable.Cols.INITIAL_QUANTITY, quantity);
+            values.put(BorrowTable.Cols.DATE_BORROWED, dateBorrowed);
+            values.put(BorrowTable.Cols.EXPECTED_RETURN_DATE, expectedReturnDate);
+            values.put(BorrowTable.Cols.STATUS, "Borrowed");
+            mDatabase.insert(BorrowTable.NAME, null, values);
+
+            logHistory(itemId, item.getName(), "BORROWED", "Borrowed " + quantity + " units by " + borrowerName);
+            mMainHandler.post(() -> callback.onComplete(true));
+        });
+    }
+
+    public void returnItemAsync(BorrowRecord record, int returnQuantity, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            SupplyItem item = getItem(record.getItemId());
+            if (item != null) {
+                item.setAvailableQuantity(item.getAvailableQuantity() + returnQuantity);
+                item.setBorrowedQuantity(Math.max(0, item.getBorrowedQuantity() - returnQuantity));
+                if (item.getBorrowedQuantity() == 0) {
+                    item.setStatus("Available");
+                }
+                updateSupply(item);
+            }
+
+            ContentValues values = new ContentValues();
+            int remainingInRecord = record.getQuantity() - returnQuantity;
+            if (remainingInRecord <= 0) {
+                values.put(BorrowTable.Cols.STATUS, "Returned");
+                values.put(BorrowTable.Cols.ACTUAL_RETURN_DATE, System.currentTimeMillis());
+                values.put(BorrowTable.Cols.QUANTITY, 0);
+            } else {
+                values.put(BorrowTable.Cols.QUANTITY, remainingInRecord);
+            }
+            mDatabase.update(BorrowTable.NAME, values, BorrowTable.Cols.UUID + " = ?", new String[]{record.getId().toString()});
+
+            logHistory(record.getItemId(), item != null ? item.getName() : "Unknown", "RETURNED", "Returned " + returnQuantity + " units");
+            mMainHandler.post(() -> callback.onComplete(true));
         });
     }
 
@@ -106,18 +180,15 @@ public class SupplyLab {
         return items;
     }
 
-    public void getItemAsync(UUID id, Callback<SupplyItem> callback) {
+    public void getItemsAsync(Callback<List<SupplyItem>> callback) {
         mExecutor.execute(() -> {
-            SupplyItem item = getItem(id);
-            mMainHandler.post(() -> callback.onComplete(item));
+            List<SupplyItem> items = getItems();
+            mMainHandler.post(() -> callback.onComplete(items));
         });
     }
 
     public SupplyItem getItem(UUID id) {
-        SupplyCursorWrapper cursor = querySupplies(
-                SupplyTable.Cols.UUID + " = ?",
-                new String[]{id.toString()}
-        );
+        SupplyCursorWrapper cursor = querySupplies(SupplyTable.Cols.UUID + " = ?", new String[]{id.toString()});
         try {
             if (cursor.getCount() == 0) return null;
             cursor.moveToFirst();
@@ -127,178 +198,38 @@ public class SupplyLab {
         }
     }
 
-    public void updateSupply(SupplyItem item) {
+    public void getItemAsync(UUID id, Callback<SupplyItem> callback) {
         mExecutor.execute(() -> {
-            SupplyItem oldItem = getItem(item.getId());
-            String details = "";
-            if (oldItem != null) {
-                if (oldItem.getQuantity() != item.getQuantity()) {
-                    details = "Quantity changed from " + oldItem.getQuantity() + " to " + item.getQuantity();
-                } else if (!oldItem.getName().equals(item.getName())) {
-                    details = "Name changed to " + item.getName();
-                } else {
-                    details = "Item details updated";
-                }
-            }
-
-            String uuidString = item.getId().toString();
-            ContentValues values = getContentValues(item);
-            mDatabase.update(SupplyTable.NAME, values,
-                    SupplyTable.Cols.UUID + " = ?",
-                    new String[]{uuidString});
-            
-            logHistory(item.getId(), item.getName(), "EDITED", details);
+            SupplyItem item = getItem(id);
+            mMainHandler.post(() -> callback.onComplete(item));
         });
     }
 
-    public void borrowItemAsync(UUID itemId, String borrowerName, int quantity, long dateBorrowed, long expectedReturnDate, Callback<Boolean> callback) {
-        mExecutor.execute(() -> {
-            boolean success = borrowItem(itemId, borrowerName, quantity, dateBorrowed, expectedReturnDate);
-            mMainHandler.post(() -> callback.onComplete(success));
-        });
+    private SupplyCursorWrapper querySupplies(String where, String[] args) {
+        Cursor cursor = mDatabase.query(SupplyTable.NAME, null, where, args, null, null, null);
+        return new SupplyCursorWrapper(cursor);
     }
 
-    private boolean borrowItem(UUID itemId, String borrowerName, int quantity, long dateBorrowed, long expectedReturnDate) {
-        SupplyItem item = getItem(itemId);
-        if (item == null || item.getQuantity() < quantity) return false;
-
-        int oldQty = item.getQuantity();
-        item.setQuantity(oldQty - quantity);
-        item.setStatus("Borrowed");
-        item.setBorrower(borrowerName);
-        
-        ContentValues itemValues = getContentValues(item);
-        mDatabase.update(SupplyTable.NAME, itemValues, SupplyTable.Cols.UUID + " = ?", new String[]{itemId.toString()});
-
+    private ContentValues getContentValues(SupplyItem item) {
         ContentValues values = new ContentValues();
-        values.put(BorrowTable.Cols.UUID, UUID.randomUUID().toString());
-        values.put(BorrowTable.Cols.ITEM_ID, itemId.toString());
-        values.put(BorrowTable.Cols.BORROWER_NAME, borrowerName);
-        values.put(BorrowTable.Cols.QUANTITY, quantity);
-        values.put(BorrowTable.Cols.INITIAL_QUANTITY, quantity);
-        values.put(BorrowTable.Cols.DATE_BORROWED, dateBorrowed);
-        values.put(BorrowTable.Cols.EXPECTED_RETURN_DATE, expectedReturnDate);
-        values.put(BorrowTable.Cols.STATUS, "Borrowed");
-
-        mDatabase.insert(BorrowTable.NAME, null, values);
-
-        logHistory(itemId, item.getName(), "BORROWED", "Borrowed " + quantity + " by " + borrowerName + ". Stock: " + oldQty + " -> " + item.getQuantity());
-
-        return true;
-    }
-
-    public void returnItemAsync(BorrowRecord record, int returnQuantity, Callback<Boolean> callback) {
-        mExecutor.execute(() -> {
-            boolean success = returnItem(record, returnQuantity);
-            mMainHandler.post(() -> callback.onComplete(success));
-        });
-    }
-
-    private boolean returnItem(BorrowRecord record, int returnQuantity) {
-        SupplyItem item = getItem(record.getItemId());
-        int oldQty = 0;
-        if (item != null) {
-            oldQty = item.getQuantity();
-            item.setQuantity(oldQty + returnQuantity);
-        }
-        
-        ContentValues values = new ContentValues();
-        int remainingQuantity = record.getQuantity() - returnQuantity;
-        if (remainingQuantity <= 0) {
-            values.put(BorrowTable.Cols.STATUS, "Returned");
-            values.put(BorrowTable.Cols.ACTUAL_RETURN_DATE, System.currentTimeMillis());
-            values.put(BorrowTable.Cols.QUANTITY, 0);
-        } else {
-            values.put(BorrowTable.Cols.QUANTITY, remainingQuantity);
-        }
-
-        mDatabase.update(BorrowTable.NAME, values, BorrowTable.Cols.UUID + " = ?", new String[]{record.getId().toString()});
-
-        if (item != null) {
-            List<BorrowRecord> activeBorrows = getActiveBorrowRecordsForItem(item.getId());
-            if (activeBorrows.isEmpty()) {
-                item.setStatus("Available");
-                item.setBorrower(null);
-            } else {
-                item.setBorrower(activeBorrows.get(0).getBorrowerName());
-                item.setStatus("Borrowed");
-            }
-            
-            ContentValues itemValues = getContentValues(item);
-            mDatabase.update(SupplyTable.NAME, itemValues, SupplyTable.Cols.UUID + " = ?", new String[]{item.getId().toString()});
-            
-            logHistory(item.getId(), item.getName(), "RETURNED", "Returned " + returnQuantity + " from " + record.getBorrowerName() + ". Stock: " + oldQty + " -> " + item.getQuantity());
-        }
-        
-        return true;
-    }
-
-    // --- Request Methods ---
-    public void addRequestAsync(SupplyRequest request, Callback<Void> callback) {
-        mExecutor.execute(() -> {
-            ContentValues values = new ContentValues();
-            values.put(RequestTable.Cols.UUID, request.getId().toString());
-            values.put(RequestTable.Cols.ITEM_ID, request.getItemId().toString());
-            values.put(RequestTable.Cols.REQUESTER_NAME, request.getRequesterName());
-            values.put(RequestTable.Cols.QUANTITY, request.getQuantity());
-            values.put(RequestTable.Cols.DATE_REQUESTED, request.getDateRequested().getTime());
-            values.put(RequestTable.Cols.STATUS, request.getStatus());
-            mDatabase.insert(RequestTable.NAME, null, values);
-
-            SupplyItem item = getItem(request.getItemId());
-            String itemName = item != null ? item.getName() : "Unknown Item";
-            logHistory(request.getItemId(), itemName, "REQUESTED", "Requested " + request.getQuantity() + " by " + request.getRequesterName());
-
-            if (callback != null) {
-                mMainHandler.post(() -> callback.onComplete(null));
-            }
-        });
-    }
-
-    public void getPendingRequestsAsync(Callback<List<SupplyRequest>> callback) {
-        mExecutor.execute(() -> {
-            List<SupplyRequest> requests = getPendingRequests();
-            mMainHandler.post(() -> callback.onComplete(requests));
-        });
-    }
-
-    public List<SupplyRequest> getPendingRequests() {
-        List<SupplyRequest> requests = new ArrayList<>();
-        Cursor cursor = mDatabase.query(RequestTable.NAME, null, RequestTable.Cols.STATUS + " = ?", new String[]{"PENDING"}, null, null, RequestTable.Cols.DATE_REQUESTED + " ASC");
-        try {
-            cursor.moveToFirst();
-            while (!cursor.isAfterLast()) {
-                requests.add(getSupplyRequestFromCursor(cursor));
-                cursor.moveToNext();
-            }
-        } finally {
-            cursor.close();
-        }
-        return requests;
-    }
-
-    private SupplyRequest getSupplyRequestFromCursor(Cursor cursor) {
-        SupplyRequest request = new SupplyRequest(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.UUID))));
-        request.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.ITEM_ID))));
-        request.setRequesterName(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.REQUESTER_NAME)));
-        request.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(RequestTable.Cols.QUANTITY)));
-        request.setDateRequested(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(RequestTable.Cols.DATE_REQUESTED))));
-        request.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.STATUS)));
-        return request;
-    }
-
-    public void updateRequestStatusAsync(SupplyRequest request, String newStatus, Callback<Boolean> callback) {
-        mExecutor.execute(() -> {
-            ContentValues values = new ContentValues();
-            values.put(RequestTable.Cols.STATUS, newStatus);
-            int rows = mDatabase.update(RequestTable.NAME, values, RequestTable.Cols.UUID + " = ?", new String[]{request.getId().toString()});
-            
-            SupplyItem item = getItem(request.getItemId());
-            String itemName = item != null ? item.getName() : "Unknown Item";
-            logHistory(request.getItemId(), itemName, newStatus, "Request status updated to " + newStatus);
-
-            mMainHandler.post(() -> callback.onComplete(rows > 0));
-        });
+        values.put(SupplyTable.Cols.UUID, item.getId().toString());
+        values.put(SupplyTable.Cols.TITLE, item.getName());
+        values.put(SupplyTable.Cols.CATEGORY, item.getCategory());
+        values.put(SupplyTable.Cols.TYPE, item.getItemType());
+        values.put(SupplyTable.Cols.TOTAL_QUANTITY, item.getTotalQuantity());
+        values.put(SupplyTable.Cols.AVAILABLE_QUANTITY, item.getAvailableQuantity());
+        values.put(SupplyTable.Cols.BORROWED_QUANTITY, item.getBorrowedQuantity());
+        values.put(SupplyTable.Cols.USED_QUANTITY, item.getUsedQuantity());
+        values.put(SupplyTable.Cols.UNIT, item.getUnit());
+        values.put(SupplyTable.Cols.DESCRIPTION, item.getDescription());
+        values.put(SupplyTable.Cols.CONDITION, item.getCondition());
+        values.put(SupplyTable.Cols.STATUS, item.getStatus());
+        values.put(SupplyTable.Cols.DATE, item.getDateAdded().getTime());
+        values.put(SupplyTable.Cols.BRAND, item.getBrand());
+        values.put(SupplyTable.Cols.BARCODE, item.getBarcode());
+        values.put(SupplyTable.Cols.ROOM, item.getRoom());
+        values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
+        return values;
     }
 
     private void logHistory(UUID itemId, String itemName, String action, String details) {
@@ -311,23 +242,6 @@ public class SupplyLab {
         values.put(HistoryTable.Cols.TIMESTAMP, System.currentTimeMillis());
         values.put(HistoryTable.Cols.DETAILS, details);
         mDatabase.insert(HistoryTable.NAME, null, values);
-    }
-
-    public void getHistoryForItemAsync(UUID itemId, Callback<List<HistoryRecord>> callback) {
-        mExecutor.execute(() -> {
-            List<HistoryRecord> records = new ArrayList<>();
-            Cursor cursor = mDatabase.query(HistoryTable.NAME, null, HistoryTable.Cols.ITEM_ID + " = ?", new String[]{itemId.toString()}, null, null, HistoryTable.Cols.TIMESTAMP + " DESC");
-            try {
-                cursor.moveToFirst();
-                while (!cursor.isAfterLast()) {
-                    records.add(getHistoryRecordFromCursor(cursor));
-                    cursor.moveToNext();
-                }
-            } finally {
-                cursor.close();
-            }
-            mMainHandler.post(() -> callback.onComplete(records));
-        });
     }
 
     public void getAllHistoryAsync(Callback<List<HistoryRecord>> callback) {
@@ -358,76 +272,9 @@ public class SupplyLab {
         return record;
     }
 
-    public void getTopBorrowedItemsAsync(int limit, Callback<List<Map.Entry<String, Integer>>> callback) {
-        mExecutor.execute(() -> {
-            Map<String, Integer> usage = new HashMap<>();
-            String query = "SELECT s." + SupplyTable.Cols.TITLE + ", SUM(b." + BorrowTable.Cols.INITIAL_QUANTITY + ") as total " +
-                           "FROM " + BorrowTable.NAME + " b " +
-                           "JOIN " + SupplyTable.NAME + " s ON b." + BorrowTable.Cols.ITEM_ID + " = s." + SupplyTable.Cols.UUID + " " +
-                           "GROUP BY b." + BorrowTable.Cols.ITEM_ID + " " +
-                           "ORDER BY total DESC LIMIT " + limit;
-            Cursor cursor = mDatabase.rawQuery(query, null);
-            try {
-                if (cursor.moveToFirst()) {
-                    do {
-                        usage.put(cursor.getString(0), cursor.getInt(1));
-                    } while (cursor.moveToNext());
-                }
-            } finally {
-                cursor.close();
-            }
-            List<Map.Entry<String, Integer>> result = new ArrayList<>(usage.entrySet());
-            result.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
-            mMainHandler.post(() -> callback.onComplete(result));
-        });
-    }
-
-    public void getUsageByRoomAsync(Callback<Map<String, Integer>> callback) {
-        mExecutor.execute(() -> {
-            Map<String, Integer> roomUsage = new HashMap<>();
-            String query = "SELECT s." + SupplyTable.Cols.ROOM + ", SUM(b." + BorrowTable.Cols.INITIAL_QUANTITY + ") " +
-                           "FROM " + BorrowTable.NAME + " b " +
-                           "JOIN " + SupplyTable.NAME + " s ON b." + BorrowTable.Cols.ITEM_ID + " = s." + SupplyTable.Cols.UUID + " " +
-                           "GROUP BY s." + SupplyTable.Cols.ROOM;
-            Cursor cursor = mDatabase.rawQuery(query, null);
-            try {
-                if (cursor.moveToFirst()) {
-                    do {
-                        roomUsage.put(cursor.getString(0), cursor.getInt(1));
-                    } while (cursor.moveToNext());
-                }
-            } finally {
-                cursor.close();
-            }
-            mMainHandler.post(() -> callback.onComplete(roomUsage));
-        });
-    }
-
-    public void updateBorrowRecordAsync(BorrowRecord record, Callback<Boolean> callback) {
-        mExecutor.execute(() -> {
-            ContentValues values = new ContentValues();
-            values.put(BorrowTable.Cols.EXPECTED_RETURN_DATE, record.getExpectedReturnDate().getTime());
-            values.put(BorrowTable.Cols.BORROWER_NAME, record.getBorrowerName());
-            values.put(BorrowTable.Cols.QUANTITY, record.getQuantity());
-            
-            int rows = mDatabase.update(BorrowTable.NAME, values, 
-                    BorrowTable.Cols.UUID + " = ?", 
-                    new String[]{record.getId().toString()});
-            
-            mMainHandler.post(() -> callback.onComplete(rows > 0));
-        });
-    }
-
-    public void getActiveBorrowRecordsAsync(Callback<List<BorrowRecord>> callback) {
-        mExecutor.execute(() -> {
-            List<BorrowRecord> result = getActiveBorrowRecords();
-            mMainHandler.post(() -> callback.onComplete(result));
-        });
-    }
-
-    public List<BorrowRecord> getActiveBorrowRecords() {
+    public List<BorrowRecord> getAllBorrowRecords() {
         List<BorrowRecord> records = new ArrayList<>();
-        Cursor cursor = mDatabase.query(BorrowTable.NAME, null, BorrowTable.Cols.STATUS + " = ?", new String[]{"Borrowed"}, null, null, null);
+        Cursor cursor = mDatabase.query(BorrowTable.NAME, null, null, null, null, null, BorrowTable.Cols.DATE_BORROWED + " ASC");
         try {
             cursor.moveToFirst();
             while (!cursor.isAfterLast()) {
@@ -442,36 +289,72 @@ public class SupplyLab {
 
     public void getAllBorrowRecordsAsync(Callback<List<BorrowRecord>> callback) {
         mExecutor.execute(() -> {
-            List<BorrowRecord> records = new ArrayList<>();
-            Cursor cursor = mDatabase.query(BorrowTable.NAME, null, null, null, null, null, BorrowTable.Cols.DATE_BORROWED + " ASC");
-            try {
-                cursor.moveToFirst();
-                while (!cursor.isAfterLast()) {
-                    records.add(getBorrowRecordFromCursor(cursor));
-                    cursor.moveToNext();
-                }
-            } finally {
-                cursor.close();
-            }
+            List<BorrowRecord> records = getAllBorrowRecords();
             mMainHandler.post(() -> callback.onComplete(records));
         });
     }
 
-    public void getReturnedCountAsync(Callback<Integer> callback) {
-        mExecutor.execute(() -> {
-            int count = 0;
-            Cursor cursor = mDatabase.query(BorrowTable.NAME, new String[]{"SUM(" + BorrowTable.Cols.INITIAL_QUANTITY + " - " + BorrowTable.Cols.QUANTITY + ")"},
-                BorrowTable.Cols.STATUS + " = 'Returned' OR " + BorrowTable.Cols.QUANTITY + " < " + BorrowTable.Cols.INITIAL_QUANTITY, null, null, null, null);
-            try {
-                if (cursor.moveToFirst()) {
-                    count = cursor.getInt(0);
-                }
-            } finally {
-                cursor.close();
+    public List<BorrowRecord> getActiveBorrowRecords() {
+        List<BorrowRecord> records = new ArrayList<>();
+        Cursor cursor = mDatabase.query(BorrowTable.NAME, null,
+                BorrowTable.Cols.STATUS + " = ?", new String[]{"Borrowed"},
+                null, null, BorrowTable.Cols.DATE_BORROWED + " ASC");
+        try {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                records.add(getBorrowRecordFromCursor(cursor));
+                cursor.moveToNext();
             }
-            final int result = count;
-            mMainHandler.post(() -> callback.onComplete(result));
+        } finally {
+            cursor.close();
+        }
+        return records;
+    }
+
+    public void getActiveBorrowRecordsAsync(Callback<List<BorrowRecord>> callback) {
+        mExecutor.execute(() -> {
+            List<BorrowRecord> records = getActiveBorrowRecords();
+            mMainHandler.post(() -> callback.onComplete(records));
         });
+    }
+
+    private BorrowRecord getBorrowRecordFromCursor(Cursor cursor) {
+        BorrowRecord record = new BorrowRecord(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.UUID))));
+        record.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.ITEM_ID))));
+        record.setBorrowerName(cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.BORROWER_NAME)));
+        record.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(BorrowTable.Cols.QUANTITY)));
+        record.setInitialQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(BorrowTable.Cols.INITIAL_QUANTITY)));
+        record.setDateBorrowed(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(BorrowTable.Cols.DATE_BORROWED))));
+        record.setExpectedReturnDate(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(BorrowTable.Cols.EXPECTED_RETURN_DATE))));
+        record.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.STATUS)));
+        return record;
+    }
+
+    public List<SupplyRequest> getPendingRequests() {
+        List<SupplyRequest> requests = new ArrayList<>();
+        Cursor cursor = mDatabase.query(RequestTable.NAME, null,
+                RequestTable.Cols.STATUS + " = ?", new String[]{"PENDING"},
+                null, null, RequestTable.Cols.DATE_REQUESTED + " ASC");
+        try {
+            cursor.moveToFirst();
+            while (!cursor.isAfterLast()) {
+                requests.add(getRequestFromCursor(cursor));
+                cursor.moveToNext();
+            }
+        } finally {
+            cursor.close();
+        }
+        return requests;
+    }
+
+    private SupplyRequest getRequestFromCursor(Cursor cursor) {
+        SupplyRequest request = new SupplyRequest(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.UUID))));
+        request.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.ITEM_ID))));
+        request.setRequesterName(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.REQUESTER_NAME)));
+        request.setQuantity(cursor.getInt(cursor.getColumnIndexOrThrow(RequestTable.Cols.QUANTITY)));
+        request.setDateRequested(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(RequestTable.Cols.DATE_REQUESTED))));
+        request.setStatus(cursor.getString(cursor.getColumnIndexOrThrow(RequestTable.Cols.STATUS)));
+        return request;
     }
 
     public void getCategoriesAsync(Callback<List<String>> callback) {
@@ -552,40 +435,47 @@ public class SupplyLab {
         });
     }
 
-    private List<BorrowRecord> getActiveBorrowRecordsForItem(UUID itemId) {
-        List<BorrowRecord> records = new ArrayList<>();
-        Cursor cursor = mDatabase.query(BorrowTable.NAME, null, BorrowTable.Cols.ITEM_ID + " = ? AND " + BorrowTable.Cols.STATUS + " = ?", new String[]{itemId.toString(), "Borrowed"}, null, null, null);
-        try {
-            cursor.moveToFirst();
-            while (!cursor.isAfterLast()) {
-                records.add(getBorrowRecordFromCursor(cursor));
-                cursor.moveToNext();
+    public void getUsageByRoomAsync(Callback<Map<String, Integer>> callback) {
+        mExecutor.execute(() -> {
+            Map<String, Integer> roomUsage = new HashMap<>();
+            String query = "SELECT " + SupplyTable.Cols.ROOM + ", SUM(" + SupplyTable.Cols.TOTAL_QUANTITY + " - " + SupplyTable.Cols.AVAILABLE_QUANTITY + ") " +
+                           "FROM " + SupplyTable.NAME + " GROUP BY " + SupplyTable.Cols.ROOM;
+            Cursor cursor = mDatabase.rawQuery(query, null);
+            try {
+                if (cursor.moveToFirst()) {
+                    do {
+                        roomUsage.put(cursor.getString(0), cursor.getInt(1));
+                    } while (cursor.moveToNext());
+                }
+            } finally {
+                cursor.close();
             }
-        } finally {
-            cursor.close();
-        }
-        return records;
+            mMainHandler.post(() -> callback.onComplete(roomUsage));
+        });
     }
 
-    private BorrowRecord getBorrowRecordFromCursor(Cursor cursor) {
-        String uuidStr = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.UUID));
-        String itemIdStr = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.ITEM_ID));
-        String borrower = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.BORROWER_NAME));
-        int quantity = cursor.getInt(cursor.getColumnIndexOrThrow(BorrowTable.Cols.QUANTITY));
-        int initialQuantity = cursor.getInt(cursor.getColumnIndexOrThrow(BorrowTable.Cols.INITIAL_QUANTITY));
-        long dateBorrowed = cursor.getLong(cursor.getColumnIndexOrThrow(BorrowTable.Cols.DATE_BORROWED));
-        long expectedReturn = cursor.getLong(cursor.getColumnIndexOrThrow(BorrowTable.Cols.EXPECTED_RETURN_DATE));
-        String status = cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.STATUS));
-
-        BorrowRecord record = new BorrowRecord(UUID.fromString(uuidStr));
-        record.setItemId(UUID.fromString(itemIdStr));
-        record.setBorrowerName(borrower);
-        record.setQuantity(quantity);
-        record.setInitialQuantity(initialQuantity);
-        record.setDateBorrowed(new Date(dateBorrowed));
-        record.setExpectedReturnDate(new Date(expectedReturn));
-        record.setStatus(status);
-        return record;
+    public void getTopBorrowedItemsAsync(int limit, Callback<List<Map.Entry<String, Integer>>> callback) {
+        mExecutor.execute(() -> {
+            Map<String, Integer> usage = new HashMap<>();
+            String query = "SELECT s." + SupplyTable.Cols.TITLE + ", SUM(b." + BorrowTable.Cols.INITIAL_QUANTITY + ") as total " +
+                           "FROM " + BorrowTable.NAME + " b " +
+                           "JOIN " + SupplyTable.NAME + " s ON b." + BorrowTable.Cols.ITEM_ID + " = s." + SupplyTable.Cols.UUID + " " +
+                           "GROUP BY b." + BorrowTable.Cols.ITEM_ID + " " +
+                           "ORDER BY total DESC LIMIT " + limit;
+            Cursor cursor = mDatabase.rawQuery(query, null);
+            try {
+                if (cursor.moveToFirst()) {
+                    do {
+                        usage.put(cursor.getString(0), cursor.getInt(1));
+                    } while (cursor.moveToNext());
+                }
+            } finally {
+                cursor.close();
+            }
+            List<Map.Entry<String, Integer>> result = new ArrayList<>(usage.entrySet());
+            result.sort((e1, e2) -> e2.getValue().compareTo(e1.getValue()));
+            mMainHandler.post(() -> callback.onComplete(result));
+        });
     }
 
     public File getPhotoFile(SupplyItem item) {
@@ -594,48 +484,5 @@ public class SupplyLab {
         File photoDir = new File(filesDir, "images");
         if (!photoDir.exists()) photoDir.mkdirs();
         return new File(photoDir, item.getPhotoFilename());
-    }
-
-    private SupplyCursorWrapper querySupplies(String whereClause, String[] whereArgs) {
-        Cursor cursor = mDatabase.query(SupplyTable.NAME, null, whereClause, whereArgs, null, null, null);
-        return new SupplyCursorWrapper(cursor);
-    }
-
-    private static ContentValues getContentValues(SupplyItem item) {
-        ContentValues values = new ContentValues();
-        values.put(SupplyTable.Cols.UUID, item.getId().toString());
-        values.put(SupplyTable.Cols.TITLE, item.getName());
-        values.put(SupplyTable.Cols.BRAND, item.getBrand());
-        values.put(SupplyTable.Cols.DATE, item.getDate().getTime());
-        if (item.getExpirationDate() != null) {
-            values.put(SupplyTable.Cols.EXPIRATION_DATE, item.getExpirationDate().getTime());
-        }
-        values.put(SupplyTable.Cols.CATEGORY, item.getCategory());
-        values.put(SupplyTable.Cols.SUPPLIER, item.getSupplier());
-        values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
-        values.put(SupplyTable.Cols.ROOM, item.getRoom());
-        values.put(SupplyTable.Cols.QUANTITY, item.getQuantity());
-        values.put(SupplyTable.Cols.UNIT, item.getUnit());
-        values.put(SupplyTable.Cols.LOCATION, item.getLocation());
-        values.put(SupplyTable.Cols.BARCODE, item.getBarcode());
-        values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
-        values.put(SupplyTable.Cols.IS_BORROWABLE, item.isBorrowable() ? 1 : 0);
-        
-        values.put(SupplyTable.Cols.DESCRIPTION, item.getDescription());
-        values.put(SupplyTable.Cols.CONDITION, item.getCondition());
-        values.put(SupplyTable.Cols.STATUS, item.getStatus());
-
-        return values;
-    }
-
-    public String findNameByBarcode(String barcode) {
-        Cursor cursor = mDatabase.query(UserTable.NAME, null, UserTable.Cols.BARCODE + " = ?", new String[] { barcode }, null, null, null);
-        try {
-            if (cursor.getCount() == 0) return null;
-            cursor.moveToFirst();
-            return cursor.getString(cursor.getColumnIndexOrThrow(UserTable.Cols.NAME));
-        } finally {
-            cursor.close();
-        }
     }
 }

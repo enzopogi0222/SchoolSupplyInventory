@@ -63,14 +63,16 @@ public class SupplyDetailFragment extends Fragment {
     private TextInputEditText mDescriptionField;
     private MaterialAutoCompleteTextView mUnitDropdown;
     private MaterialAutoCompleteTextView mCategoryDropdown;
+    private MaterialAutoCompleteTextView mTypeDropdown;
     private MaterialAutoCompleteTextView mConditionDropdown;
     private MaterialAutoCompleteTextView mStatusDropdown;
     private MaterialAutoCompleteTextView mRoomDropdown;
     private MaterialButton mDateButton;
-    private MaterialSwitch mBorrowableSwitch;
     private FloatingActionButton mPhotoButton;
     private ExtendedFloatingActionButton mSaveFab;
     private ImageView mPhotoView;
+    
+    private TextView mAvailableStockText, mBorrowedStockText, mUsedStockText;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -122,14 +124,6 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     @Override
-    public void onPause() {
-        super.onPause();
-        if (mItem != null && !mIsNewItem) {
-            SupplyLab.get(getActivity()).updateSupply(mItem);
-        }
-    }
-
-    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         if (mItem == null) {
@@ -146,6 +140,10 @@ public class SupplyDetailFragment extends Fragment {
         }
 
         // --- General Information ---
+        mBarcodeField = v.findViewById(R.id.supply_barcode);
+        mBarcodeField.setText(mItem.getBarcode());
+        mBarcodeField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBarcode(s)));
+
         mTitleField = v.findViewById(R.id.supply_title);
         mTitleField.setText(mItem.getName());
         mTitleField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setName(s)));
@@ -153,10 +151,26 @@ public class SupplyDetailFragment extends Fragment {
         mCategoryDropdown = v.findViewById(R.id.supply_category);
         updateCategoryList();
 
+        mTypeDropdown = v.findViewById(R.id.supply_type);
+        setupStaticDropdown(mTypeDropdown, new String[]{SupplyItem.TYPE_CONSUMABLE, SupplyItem.TYPE_BORROWABLE}, mItem.getItemType(), s -> mItem.setItemType(s));
+
         mQuantityField = v.findViewById(R.id.supply_quantity);
-        mQuantityField.setText(String.valueOf(mItem.getQuantity()));
+        mQuantityField.setText(String.valueOf(mItem.getTotalQuantity()));
         mQuantityField.addTextChangedListener(createSimpleTextWatcher(s -> {
-            try { mItem.setQuantity(Integer.parseInt(s)); } catch (Exception e) { mItem.setQuantity(0); }
+            try { 
+                int val = Integer.parseInt(s);
+                if (mIsNewItem) {
+                    mItem.setTotalQuantity(val);
+                    mItem.setAvailableQuantity(val);
+                    updateStockDisplays();
+                } else {
+                    // Update total stock, adjust available if needed
+                    int diff = val - mItem.getTotalQuantity();
+                    mItem.setTotalQuantity(val);
+                    mItem.setAvailableQuantity(Math.max(0, mItem.getAvailableQuantity() + diff));
+                    updateStockDisplays();
+                }
+            } catch (Exception e) { }
         }));
 
         mUnitDropdown = v.findViewById(R.id.supply_unit);
@@ -173,25 +187,22 @@ public class SupplyDetailFragment extends Fragment {
         mStatusDropdown = v.findViewById(R.id.supply_status);
         setupStaticDropdown(mStatusDropdown, new String[]{"Available", "Borrowed", "Used", "Out of Stock"}, mItem.getStatus(), s -> mItem.setStatus(s));
 
-        // --- Tracking & Location ---
-        mBarcodeField = v.findViewById(R.id.supply_barcode);
-        mBarcodeField.setText(mItem.getBarcode());
-        mBarcodeField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBarcode(s)));
+        // --- Inventory Details ---
+        mAvailableStockText = v.findViewById(R.id.available_stock_display);
+        mBorrowedStockText = v.findViewById(R.id.borrowed_stock_display);
+        mUsedStockText = v.findViewById(R.id.used_stock_display);
+        updateStockDisplays();
 
         mRoomDropdown = v.findViewById(R.id.supply_room);
         updateRoomList();
 
-        // --- Dates & Options ---
+        // --- Dates ---
         mDateButton = v.findViewById(R.id.supply_date);
         updateDateButton();
-        mDateButton.setOnClickListener(view -> showDatePicker("Date Added", mItem.getDate(), date -> {
-            mItem.setDate(date);
+        mDateButton.setOnClickListener(view -> showDatePicker("Date Added", mItem.getDateAdded(), date -> {
+            mItem.setDateAdded(date);
             updateDateButton();
         }));
-
-        mBorrowableSwitch = v.findViewById(R.id.supply_borrowable);
-        mBorrowableSwitch.setChecked(mItem.isBorrowable());
-        mBorrowableSwitch.setOnCheckedChangeListener((b, isChecked) -> mItem.setBorrowable(isChecked));
 
         // --- Media ---
         mPhotoButton = v.findViewById(R.id.supply_camera);
@@ -207,9 +218,15 @@ public class SupplyDetailFragment extends Fragment {
         updatePhotoView();
 
         mSaveFab = v.findViewById(R.id.save_supply_fab);
-        mSaveFab.setOnClickListener(view -> saveNewItem());
+        mSaveFab.setOnClickListener(view -> saveItem());
 
         return v;
+    }
+
+    private void updateStockDisplays() {
+        mAvailableStockText.setText("Available: " + mItem.getAvailableQuantity());
+        mBorrowedStockText.setText("Borrowed: " + mItem.getBorrowedQuantity());
+        mUsedStockText.setText("Used: " + mItem.getUsedQuantity());
     }
 
     private void setupStaticDropdown(MaterialAutoCompleteTextView dropdown, String[] options, String currentSelection, java.util.function.Consumer<String> callback) {
@@ -261,17 +278,6 @@ public class SupplyDetailFragment extends Fragment {
                     uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
         }
         startActivityForResult(captureImage, REQUEST_PHOTO);
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == REQUEST_CAMERA_PERMISSION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                launchCamera();
-            } else {
-                Toast.makeText(getActivity(), "Camera permission required", Toast.LENGTH_SHORT).show();
-            }
-        }
     }
 
     private void updateCategoryList() {
@@ -359,9 +365,7 @@ public class SupplyDetailFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
         MenuItem deleteItem = menu.findItem(R.id.delete_supply);
-        if (mIsNewItem) {
-            if (deleteItem != null) deleteItem.setVisible(false);
-        }
+        if (mIsNewItem && deleteItem != null) deleteItem.setVisible(false);
     }
 
     @Override
@@ -371,7 +375,7 @@ public class SupplyDetailFragment extends Fragment {
         return super.onOptionsItemSelected(item);
     }
 
-    private void saveNewItem() {
+    private void saveItem() {
         if (mItem.getName() == null || mItem.getName().trim().isEmpty()) {
             Toast.makeText(getActivity(), "Please enter an item name", Toast.LENGTH_SHORT).show();
             return;
@@ -401,7 +405,7 @@ public class SupplyDetailFragment extends Fragment {
 
     private void updateDateButton() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-        mDateButton.setText("Date Added: " + dateFormat.format(mItem.getDate()));
+        mDateButton.setText("Date Added: " + dateFormat.format(mItem.getDateAdded()));
     }
 
     private void updatePhotoView() {

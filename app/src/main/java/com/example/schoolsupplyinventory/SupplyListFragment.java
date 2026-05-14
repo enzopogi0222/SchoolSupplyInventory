@@ -11,6 +11,7 @@ import android.util.LruCache;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
@@ -43,7 +44,8 @@ public class SupplyListFragment extends Fragment {
     private InventoryAdapter mAdapter;
     private ExtendedFloatingActionButton mAddSupplyFab;
     private TextInputEditText mSearchEditText;
-    private ChipGroup mFilterChipGroup;
+    private ChipGroup mMainFilterChipGroup, mSubFilterChipGroup;
+    private HorizontalScrollView mSubFilterScroll;
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private ShimmerFrameLayout mShimmerViewContainer;
     private View mEmptyStateView;
@@ -103,38 +105,30 @@ public class SupplyListFragment extends Fragment {
 
         mSearchEditText = view.findViewById(R.id.search_edit_text);
         mSearchEditText.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                applyFilters();
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilters(); }
+            @Override public void afterTextChanged(Editable s) {}
         });
 
-        mFilterChipGroup = view.findViewById(R.id.filter_chip_group);
-        mFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
+        mMainFilterChipGroup = view.findViewById(R.id.main_filter_chip_group);
+        mSubFilterChipGroup = view.findViewById(R.id.sub_filter_chip_group);
+        mSubFilterScroll = view.findViewById(R.id.sub_filter_scroll);
+
+        mMainFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            updateSubFilterVisibility();
+            applyFilters();
+        });
+
+        mSubFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> applyFilters());
 
         mSwipeRefreshLayout = view.findViewById(R.id.swipe_refresh_layout);
-        mSwipeRefreshLayout.setColorSchemeResources(R.color.primary_purple);
         mSwipeRefreshLayout.setOnRefreshListener(this::updateUI);
 
         mShimmerViewContainer = view.findViewById(R.id.shimmer_view_container);
         mEmptyStateView = view.findViewById(R.id.empty_state_view);
 
         mAddSupplyFab = view.findViewById(R.id.add_supply_fab);
-        mAddSupplyFab.setOnClickListener(v -> createNewSupply());
-
-        mSupplyRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-                if (dy > 0) mAddSupplyFab.shrink();
-                else if (dy < 0) mAddSupplyFab.extend();
-            }
-        });
+        mAddSupplyFab.setOnClickListener(v -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
 
         setupItemTouchHelper();
         updateUI();
@@ -142,63 +136,79 @@ public class SupplyListFragment extends Fragment {
         return view;
     }
 
+    private void updateSubFilterVisibility() {
+        int checkedId = mMainFilterChipGroup.getCheckedChipId();
+        mSubFilterChipGroup.clearCheck();
+        
+        if (checkedId == R.id.chip_main_all) {
+            mSubFilterScroll.setVisibility(View.GONE);
+        } else if (checkedId == R.id.chip_main_consumable) {
+            mSubFilterScroll.setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_available).setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_used).setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_low_stock).setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_borrowed).setVisibility(View.GONE);
+        } else if (checkedId == R.id.chip_main_borrowable) {
+            mSubFilterScroll.setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_available).setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_borrowed).setVisibility(View.VISIBLE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_used).setVisibility(View.GONE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_low_stock).setVisibility(View.GONE);
+        }
+    }
+
     private void applyFilters() {
         if (mAllItems == null) return;
 
         String query = mSearchEditText.getText().toString().toLowerCase();
-        int checkedId = mFilterChipGroup.getCheckedChipId();
+        int mainCheckedId = mMainFilterChipGroup.getCheckedChipId();
+        int subCheckedId = mSubFilterChipGroup.getCheckedChipId();
 
         List<SupplyItem> filteredList = mAllItems.stream()
                 .filter(item -> {
                     String name = item.getName() != null ? item.getName().toLowerCase() : "";
                     String category = item.getCategory() != null ? item.getCategory().toLowerCase() : "";
-                    String barcode = item.getBarcode() != null ? item.getBarcode().toLowerCase() : "";
-                    String department = item.getRoom() != null ? item.getRoom().toLowerCase() : "";
-                    String supplier = item.getSupplier() != null ? item.getSupplier().toLowerCase() : "";
                     
-                    boolean matchesQuery = name.contains(query) || 
-                                          category.contains(query) || 
-                                          barcode.contains(query) ||
-                                          department.contains(query) ||
-                                          supplier.contains(query);
+                    boolean matchesQuery = name.contains(query) || category.contains(query);
 
-                    boolean matchesChip = true;
-                    if (checkedId == R.id.chip_available) {
-                        matchesChip = item.getQuantity() > 0 && !item.isDamaged();
-                    } else if (checkedId == R.id.chip_borrowed) {
-                        matchesChip = item.isBorrowed();
-                    } else if (checkedId == R.id.chip_damaged) {
-                        matchesChip = item.isDamaged();
-                    } else if (checkedId == R.id.chip_low_stock) {
-                        matchesChip = item.getQuantity() > 0 && item.getQuantity() <= 5;
+                    boolean matchesMain = true;
+                    if (mainCheckedId == R.id.chip_main_consumable) {
+                        matchesMain = SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType());
+                    } else if (mainCheckedId == R.id.chip_main_borrowable) {
+                        matchesMain = SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(item.getItemType());
                     }
 
-                    return matchesQuery && matchesChip;
+                    boolean matchesSub = true;
+                    if (subCheckedId != View.NO_ID) {
+                        if (subCheckedId == R.id.chip_sub_available) {
+                            matchesSub = item.getAvailableQuantity() > 0;
+                        } else if (subCheckedId == R.id.chip_sub_borrowed) {
+                            matchesSub = item.getBorrowedQuantity() > 0;
+                        } else if (subCheckedId == R.id.chip_sub_used) {
+                            matchesSub = item.getUsedQuantity() > 0;
+                        } else if (subCheckedId == R.id.chip_sub_low_stock) {
+                            matchesSub = item.getAvailableQuantity() <= 5 && item.getAvailableQuantity() > 0;
+                        }
+                    }
+
+                    return matchesQuery && matchesMain && matchesSub;
                 })
                 .collect(Collectors.toList());
 
         if (mAdapter != null) {
             if (mSelectedCategory == null) {
                 Map<String, List<SupplyItem>> grouped = filteredList.stream()
-                        .collect(Collectors.groupingBy(item -> 
-                            item.getCategory() != null ? item.getCategory() : "OTHER"
-                        ));
-                
+                        .collect(Collectors.groupingBy(item -> item.getCategory() != null ? item.getCategory() : "OTHER"));
                 List<Object> displayList = grouped.entrySet().stream()
                         .map(entry -> new Category(entry.getKey(), entry.getValue().size()))
                         .sorted((c1, c2) -> c1.name.compareToIgnoreCase(c2.name))
                         .collect(Collectors.toList());
-                
                 mAdapter.setDisplayItems(displayList);
                 mOnBackPressedCallback.setEnabled(false);
             } else {
                 List<Object> displayList = filteredList.stream()
-                        .filter(item -> {
-                            String cat = item.getCategory() != null ? item.getCategory() : "OTHER";
-                            return cat.equals(mSelectedCategory);
-                        })
+                        .filter(item -> mSelectedCategory.equals(item.getCategory()))
                         .collect(Collectors.toList());
-                
                 mAdapter.setDisplayItems(displayList);
                 mOnBackPressedCallback.setEnabled(true);
             }
@@ -207,234 +217,112 @@ public class SupplyListFragment extends Fragment {
         }
     }
 
-    private void createNewSupply() {
-        Intent intent = SupplyPagerActivity.newIntent(getActivity(), null);
-        startActivity(intent);
-    }
-
     private void setupItemTouchHelper() {
-        ItemTouchHelper.SimpleCallback itemTouchHelperCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
-            @Override
-            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
-                return false;
+        ItemTouchHelper.SimpleCallback callback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+            @Override public boolean onMove(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh, @NonNull RecyclerView.ViewHolder t) { return false; }
+            @Override public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                if (viewHolder instanceof SupplyHolder) {
+                    SupplyItem item = ((SupplyHolder) viewHolder).mItem;
+                    new AlertDialog.Builder(getActivity())
+                            .setTitle("Delete Item")
+                            .setMessage("Delete " + item.getName() + "?")
+                            .setPositiveButton("Delete", (d, w) -> {
+                                SupplyLab.get(getActivity()).deleteSupply(item);
+                                updateUI();
+                            })
+                            .setNegativeButton("Cancel", (d, w) -> mAdapter.notifyItemChanged(viewHolder.getAdapterPosition()))
+                            .show();
+                } else mAdapter.notifyItemChanged(viewHolder.getAdapterPosition());
             }
-
-            @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
-                final int position = viewHolder.getAdapterPosition();
-                if (mAdapter == null || position >= mAdapter.mDisplayItems.size()) return;
-                
-                Object obj = mAdapter.mDisplayItems.get(position);
-                if (!(obj instanceof SupplyItem)) {
-                    mAdapter.notifyItemChanged(position);
-                    return;
-                }
-
-                final SupplyItem itemToDelete = (SupplyItem) obj;
-
-                new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SupplyFlow)
-                        .setTitle("Delete Item")
-                        .setMessage("Are you sure you want to delete " + itemToDelete.getName() + "?")
-                        .setPositiveButton("Delete", (dialog, which) -> {
-                            SupplyLab.get(getActivity()).deleteSupply(itemToDelete);
-                            Snackbar.make(mSupplyRecyclerView, itemToDelete.getName() + " deleted", Snackbar.LENGTH_LONG)
-                                    .setAction("UNDO", v -> {
-                                        SupplyLab.get(getActivity()).addSupply(itemToDelete);
-                                        updateUI();
-                                    }).show();
-                            updateUI();
-                        })
-                        .setNegativeButton("Cancel", (dialog, which) -> mAdapter.notifyItemChanged(position))
-                        .setOnCancelListener(dialog -> mAdapter.notifyItemChanged(position))
-                        .show();
-            }
-
-            @Override
-            public int getSwipeDirs(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
-                if (viewHolder instanceof CategoryHolder) return 0;
-                return super.getSwipeDirs(recyclerView, viewHolder);
+            @Override public int getSwipeDirs(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
+                if (vh instanceof CategoryHolder) return 0;
+                return super.getSwipeDirs(rv, vh);
             }
         };
-
-        new ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(mSupplyRecyclerView);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        updateUI();
+        new ItemTouchHelper(callback).attachToRecyclerView(mSupplyRecyclerView);
     }
 
     private void updateUI() {
-        if (mAllItems == null || mAllItems.isEmpty()) {
-            mShimmerViewContainer.setVisibility(View.VISIBLE);
-            mShimmerViewContainer.startShimmer();
-            mSupplyRecyclerView.setVisibility(View.GONE);
-        }
-
         SupplyLab.get(getActivity()).getItemsAsync(items -> {
             if (!isAdded()) return;
-            
-            mShimmerViewContainer.stopShimmer();
             mShimmerViewContainer.setVisibility(View.GONE);
             mSupplyRecyclerView.setVisibility(View.VISIBLE);
-
             mAllItems = items;
             if (mAdapter == null) {
                 mAdapter = new InventoryAdapter(new ArrayList<>());
                 mSupplyRecyclerView.setAdapter(mAdapter);
             }
             applyFilters();
-            if (mSwipeRefreshLayout != null) mSwipeRefreshLayout.setRefreshing(false);
+            mSwipeRefreshLayout.setRefreshing(false);
         });
     }
 
-    private class CategoryHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+    private class CategoryHolder extends RecyclerView.ViewHolder {
         private TextView mNameTextView, mCountTextView;
-        private Category mCategory;
-
-        public CategoryHolder(LayoutInflater inflater, ViewGroup parent) {
-            super(inflater.inflate(R.layout.list_item_category, parent, false));
-            itemView.setOnClickListener(this);
-            mNameTextView = itemView.findViewById(R.id.category_name);
-            mCountTextView = itemView.findViewById(R.id.category_count);
+        public CategoryHolder(View v) {
+            super(v);
+            mNameTextView = v.findViewById(R.id.category_name);
+            mCountTextView = v.findViewById(R.id.category_count);
+            v.setOnClickListener(view -> {
+                mSelectedCategory = ((Category) mAdapter.mDisplayItems.get(getAdapterPosition())).name;
+                applyFilters();
+            });
         }
-
-        public void bind(Category category) {
-            mCategory = category;
-            mNameTextView.setText(category.name);
-            mCountTextView.setText(category.count + " items");
-        }
-
-        @Override
-        public void onClick(View view) {
-            mSelectedCategory = mCategory.name;
-            applyFilters();
+        public void bind(Category c) {
+            mNameTextView.setText(c.name);
+            mCountTextView.setText(c.count + " items");
         }
     }
 
-    private class SupplyHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
-        private TextView mTitleTextView, mSupplierTextView, mCategoryTextView, mRoomTextView, mStatusTextView, mQuantityTextView;
-        private ImageView mPhotoThumbnail;
+    private class SupplyHolder extends RecyclerView.ViewHolder {
+        private TextView mTitle, mCategory, mStatus, mQuantity;
+        private ImageView mThumbnail;
         private SupplyItem mItem;
-        private String mCurrentPhotoPath;
-
-        public SupplyHolder(LayoutInflater inflater, ViewGroup parent) {
-            super(inflater.inflate(R.layout.list_item_supply, parent, false));
-            itemView.setOnClickListener(this);
-            mTitleTextView = itemView.findViewById(R.id.item_title);
-            mSupplierTextView = itemView.findViewById(R.id.item_supplier);
-            mCategoryTextView = itemView.findViewById(R.id.item_category);
-            mRoomTextView = itemView.findViewById(R.id.item_room);
-            mStatusTextView = itemView.findViewById(R.id.item_status);
-            mQuantityTextView = itemView.findViewById(R.id.item_quantity);
-            mPhotoThumbnail = itemView.findViewById(R.id.item_photo_thumbnail);
+        public SupplyHolder(View v) {
+            super(v);
+            mTitle = v.findViewById(R.id.item_title);
+            mCategory = v.findViewById(R.id.item_category);
+            mStatus = v.findViewById(R.id.item_status);
+            mQuantity = v.findViewById(R.id.item_quantity);
+            mThumbnail = v.findViewById(R.id.item_photo_thumbnail);
+            v.setOnClickListener(view -> startActivity(SupplyPagerActivity.newIntent(getActivity(), mItem.getId())));
         }
-
         public void bind(SupplyItem item) {
             mItem = item;
-            mTitleTextView.setText(mItem.getName() != null && !mItem.getName().isEmpty() ? mItem.getName() : "Unnamed Item");
-            mSupplierTextView.setText(mItem.getSupplier() != null && !mItem.getSupplier().isEmpty() ? mItem.getSupplier() : "No Supplier");
-            mCategoryTextView.setText(mItem.getCategory() != null ? mItem.getCategory() : "OTHER");
-            mRoomTextView.setText("• " + (mItem.getRoom() != null ? mItem.getRoom() : "No Room"));
-            mQuantityTextView.setText("Stock: " + mItem.getQuantity() + " " + (mItem.getUnit() != null ? mItem.getUnit() : "pcs"));
+            mTitle.setText(item.getName());
+            mCategory.setText(item.getCategory() + " • " + item.getItemType().toUpperCase());
+            mQuantity.setText("Available: " + item.getAvailableQuantity() + " / Total: " + item.getTotalQuantity() + " " + item.getUnit());
             
-            if (mItem.isDamaged()) {
-                mStatusTextView.setText("DAMAGED");
-                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_error));
-            } else if (mItem.isBorrowed()) {
-                mStatusTextView.setText("BORROWED");
-                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_warning));
-            } else if (mItem.getQuantity() > 0) {
-                mStatusTextView.setText("AVAILABLE");
-                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_success));
-            } else {
-                mStatusTextView.setText("OUT OF STOCK");
-                mStatusTextView.setTextColor(ContextCompat.getColor(getActivity(), R.color.color_error));
+            mStatus.setText(item.getStatus().toUpperCase());
+            int color = R.color.color_success;
+            if (item.getAvailableQuantity() == 0) {
+                mStatus.setText("OUT OF STOCK");
+                color = R.color.color_error;
+            } else if (item.getAvailableQuantity() <= 5) {
+                mStatus.setText("LOW STOCK");
+                color = R.color.color_warning;
+            } else if (SupplyItem.TYPE_BORROWABLE.equals(item.getItemType()) && item.getBorrowedQuantity() > 0) {
+                mStatus.setText("ON LOAN");
+                color = R.color.color_info;
             }
-
-            loadThumbnail();
-        }
-
-        private void loadThumbnail() {
-            File photoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
-            if (photoFile == null || !photoFile.exists()) {
-                mPhotoThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
-                mCurrentPhotoPath = null;
-                return;
-            }
-
-            String path = photoFile.getPath();
-            mCurrentPhotoPath = path;
-            Bitmap cached = mThumbnailCache.get(path);
-            
-            if (cached != null) {
-                mPhotoThumbnail.setImageBitmap(cached);
-            } else {
-                mPhotoThumbnail.setImageResource(android.R.drawable.ic_menu_gallery);
-                mImageExecutor.execute(() -> {
-                    final Bitmap bitmap = PictureUtils.getScaledBitmap(path, 160, 160);
-                    if (bitmap != null) {
-                        mThumbnailCache.put(path, bitmap);
-                        mMainHandler.post(() -> {
-                            if (path.equals(mCurrentPhotoPath)) {
-                                mPhotoThumbnail.setImageBitmap(bitmap);
-                            }
-                        });
-                    }
-                });
-            }
-        }
-
-        @Override
-        public void onClick(View view) {
-            Intent intent = SupplyPagerActivity.newIntent(getActivity(), mItem.getId());
-            startActivity(intent);
+            mStatus.setTextColor(ContextCompat.getColor(getActivity(), color));
         }
     }
 
     private class InventoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         private List<Object> mDisplayItems;
-
-        public InventoryAdapter(List<Object> items) {
-            mDisplayItems = items;
-        }
-
-        @Override
-        public int getItemViewType(int position) {
-            if (mDisplayItems.get(position) instanceof Category) {
-                return TYPE_CATEGORY;
-            }
-            return TYPE_ITEM;
-        }
-
-        @NonNull
-        @Override
-        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        public InventoryAdapter(List<Object> items) { mDisplayItems = items; }
+        @Override public int getItemViewType(int pos) { return mDisplayItems.get(pos) instanceof Category ? TYPE_CATEGORY : TYPE_ITEM; }
+        @NonNull @Override public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             LayoutInflater inflater = LayoutInflater.from(getActivity());
-            if (viewType == TYPE_CATEGORY) {
-                return new CategoryHolder(inflater, parent);
-            } else {
-                return new SupplyHolder(inflater, parent);
-            }
+            return viewType == TYPE_CATEGORY ? new CategoryHolder(inflater.inflate(R.layout.list_item_category, parent, false))
+                                             : new SupplyHolder(inflater.inflate(R.layout.list_item_supply, parent, false));
         }
-
-        @Override
-        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-            if (holder instanceof CategoryHolder) {
-                ((CategoryHolder) holder).bind((Category) mDisplayItems.get(position));
-            } else {
-                ((SupplyHolder) holder).bind((SupplyItem) mDisplayItems.get(position));
-            }
+        @Override public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int pos) {
+            if (holder instanceof CategoryHolder) ((CategoryHolder) holder).bind((Category) mDisplayItems.get(pos));
+            else ((SupplyHolder) holder).bind((SupplyItem) mDisplayItems.get(pos));
         }
-
-        @Override
-        public int getItemCount() {
-            return mDisplayItems.size();
-        }
-
-        public void setDisplayItems(List<Object> items) {
-            mDisplayItems = items;
-        }
+        @Override public int getItemCount() { return mDisplayItems.size(); }
+        public void setDisplayItems(List<Object> items) { mDisplayItems = items; }
     }
 }

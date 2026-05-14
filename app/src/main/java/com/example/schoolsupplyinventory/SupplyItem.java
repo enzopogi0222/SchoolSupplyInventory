@@ -5,27 +5,31 @@ import java.util.UUID;
 
 public class SupplyItem {
 
+    public static final String TYPE_CONSUMABLE = "Consumable";
+    public static final String TYPE_BORROWABLE = "Borrowable";
+
     private UUID mId;
     private String mName;
-    private String mBrand;
-    private Date mDate; // Date Added
-    private Date mExpirationDate;
     private String mCategory;
-    private String mSupplier;
-    private String mBorrower;
-    private String mPhotoFilename;
-    private String mRoom; // Storage location (Building/Room/Department)
-    private int mQuantity;
+    private String mItemType; // Consumable or Borrowable
+    private int mTotalQuantity;
+    private int mAvailableQuantity;
+    private int mBorrowedQuantity;
+    private int mUsedQuantity;
     private String mUnit;
-    private String mLocation; // Specific storage location (Shelf/Cabinet)
-    private String mBarcode;
-    private String mPropertyTag;
-    private boolean mIsBorrowable;
-    
-    // New fields based on user request
     private String mDescription;
     private String mCondition; // New, Good, Damaged, Old
     private String mStatus; // Available, Borrowed, Used, Out of Stock
+    private Date mDateAdded;
+    
+    // Additional fields from previous versions that might still be useful
+    private String mBrand;
+    private String mBarcode;
+    private String mPropertyTag;
+    private String mRoom;
+    private String mLocation;
+    private String mSupplier;
+    private Date mExpirationDate;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -33,15 +37,14 @@ public class SupplyItem {
 
     public SupplyItem(UUID id) {
         mId = id;
-        mDate = new Date();
+        mDateAdded = new Date();
+        mItemType = TYPE_CONSUMABLE;
         mCategory = "OFFICE SUPPLIES";
-        mRoom = "ITE OFFICE";
-        mQuantity = 1;
+        mTotalQuantity = 0;
+        mAvailableQuantity = 0;
+        mBorrowedQuantity = 0;
+        mUsedQuantity = 0;
         mUnit = "Piece";
-        mLocation = "";
-        mPropertyTag = "";
-        mBarcode = "";
-        mIsBorrowable = true;
         mCondition = "New";
         mStatus = "Available";
         mDescription = "";
@@ -59,42 +62,6 @@ public class SupplyItem {
         mName = name;
     }
 
-    public String getBrand() {
-        return mBrand;
-    }
-
-    public void setBrand(String brand) {
-        mBrand = brand;
-    }
-
-    public Date getDate() {
-        return mDate;
-    }
-
-    public void setDate(Date date) {
-        mDate = date;
-    }
-
-    public Date getExpirationDate() {
-        return mExpirationDate;
-    }
-
-    public void setExpirationDate(Date expirationDate) {
-        mExpirationDate = expirationDate;
-    }
-
-    public boolean isBorrowed() {
-        return "Borrowed".equalsIgnoreCase(mStatus);
-    }
-
-    public boolean isBorrowable() {
-        return mIsBorrowable;
-    }
-
-    public void setBorrowable(boolean borrowable) {
-        mIsBorrowable = borrowable;
-    }
-
     public String getCategory() {
         return mCategory;
     }
@@ -103,40 +70,44 @@ public class SupplyItem {
         mCategory = category;
     }
 
-    public String getSupplier() {
-        return mSupplier;
+    public String getItemType() {
+        return mItemType;
     }
 
-    public void setSupplier(String supplier) {
-        mSupplier = supplier;
+    public void setItemType(String itemType) {
+        mItemType = itemType;
     }
 
-    public String getBorrower() {
-        return mBorrower;
+    public int getTotalQuantity() {
+        return mTotalQuantity;
     }
 
-    public void setBorrower(String borrower) {
-        mBorrower = borrower;
+    public void setTotalQuantity(int totalQuantity) {
+        mTotalQuantity = totalQuantity;
     }
 
-    public String getPhotoFilename() {
-        return "IMG_" + getId().toString() + ".jpg";
+    public int getAvailableQuantity() {
+        return mAvailableQuantity;
     }
 
-    public String getRoom() {
-        return mRoom;
+    public void setAvailableQuantity(int availableQuantity) {
+        mAvailableQuantity = availableQuantity;
     }
 
-    public void setRoom(String room) {
-        mRoom = room;
+    public int getBorrowedQuantity() {
+        return mBorrowedQuantity;
     }
 
-    public int getQuantity() {
-        return mQuantity;
+    public void setBorrowedQuantity(int borrowedQuantity) {
+        mBorrowedQuantity = borrowedQuantity;
     }
 
-    public void setQuantity(int quantity) {
-        mQuantity = quantity;
+    public int getUsedQuantity() {
+        return mUsedQuantity;
+    }
+
+    public void setUsedQuantity(int usedQuantity) {
+        mUsedQuantity = usedQuantity;
     }
 
     public String getUnit() {
@@ -145,34 +116,6 @@ public class SupplyItem {
 
     public void setUnit(String unit) {
         mUnit = unit;
-    }
-
-    public String getLocation() {
-        return mLocation;
-    }
-
-    public void setLocation(String location) {
-        mLocation = location;
-    }
-
-    public String getBarcode() {
-        return mBarcode;
-    }
-
-    public void setBarcode(String barcode) {
-        mBarcode = barcode;
-    }
-
-    public String getPropertyTag() {
-        return mPropertyTag;
-    }
-
-    public void setPropertyTag(String propertyTag) {
-        mPropertyTag = propertyTag;
-    }
-
-    public boolean isDamaged() {
-        return "Damaged".equalsIgnoreCase(mCondition);
     }
 
     public String getDescription() {
@@ -197,5 +140,41 @@ public class SupplyItem {
 
     public void setStatus(String status) {
         mStatus = status;
+    }
+
+    public Date getDateAdded() {
+        return mDateAdded;
+    }
+
+    public void setDateAdded(Date dateAdded) {
+        mDateAdded = dateAdded;
+    }
+
+    // Legacy/Compatibility Getters and Setters
+    public int getQuantity() {
+        return mAvailableQuantity;
+    }
+
+    public String getBrand() { return mBrand; }
+    public void setBrand(String brand) { mBrand = brand; }
+    public String getBarcode() { return mBarcode; }
+    public void setBarcode(String barcode) { mBarcode = barcode; }
+    public String getPropertyTag() { return mPropertyTag; }
+    public void setPropertyTag(String propertyTag) { mPropertyTag = propertyTag; }
+    public String getRoom() { return mRoom; }
+    public void setRoom(String room) { mRoom = room; }
+    public String getLocation() { return mLocation; }
+    public void setLocation(String location) { mLocation = location; }
+    public String getSupplier() { return mSupplier; }
+    public void setSupplier(String supplier) { mSupplier = supplier; }
+    public Date getExpirationDate() { return mExpirationDate; }
+    public void setExpirationDate(Date expirationDate) { mExpirationDate = expirationDate; }
+    
+    public String getPhotoFilename() {
+        return "IMG_" + getId().toString() + ".jpg";
+    }
+
+    public boolean isBorrowable() {
+        return TYPE_BORROWABLE.equals(mItemType);
     }
 }

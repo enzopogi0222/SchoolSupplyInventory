@@ -53,6 +53,7 @@
                     android:inputType="text" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Main Filter: All, Consumable, Borrowable -->
             <HorizontalScrollView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -60,7 +61,7 @@
                 android:scrollbars="none">
 
                 <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/filter_chip_group"
+                    android:id="@+id/main_filter_chip_group"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     app:singleSelection="true"
@@ -68,7 +69,7 @@
                     app:chipSpacingHorizontal="8dp">
 
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_all"
+                        android:id="@+id/chip_main_all"
                         style="@style/Widget.Material3.Chip.Filter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -76,33 +77,62 @@
                         android:checked="true" />
 
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_available"
+                        android:id="@+id/chip_main_consumable"
                         style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Consumable" />
+
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_main_borrowable"
+                        style="@style/Widget.Material3.Chip.Filter"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Borrowable" />
+
+                </com.google.android.material.chip.ChipGroup>
+            </HorizontalScrollView>
+
+            <!-- Sub Filter Row -->
+            <HorizontalScrollView
+                android:id="@+id/sub_filter_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                android:scrollbars="none">
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/sub_filter_chip_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:chipSpacingHorizontal="8dp">
+                    <!-- Chips are added/removed dynamically or toggled via visibility -->
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_sub_available"
+                        style="@style/Widget.Material3.Chip.Suggestion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Available" />
-
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_borrowed"
-                        style="@style/Widget.Material3.Chip.Filter"
+                        android:id="@+id/chip_sub_borrowed"
+                        style="@style/Widget.Material3.Chip.Suggestion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Borrowed" />
-
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_damaged"
-                        style="@style/Widget.Material3.Chip.Filter"
+                        android:id="@+id/chip_sub_used"
+                        style="@style/Widget.Material3.Chip.Suggestion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Damaged" />
-
+                        android:text="Used" />
                     <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_low_stock"
-                        style="@style/Widget.Material3.Chip.Filter"
+                        android:id="@+id/chip_sub_low_stock"
+                        style="@style/Widget.Material3.Chip.Suggestion"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Low Stock" />
-
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
         </LinearLayout>

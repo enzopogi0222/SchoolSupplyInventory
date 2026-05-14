@@ -11,9 +11,13 @@ public class SupplyDbSchema {
             public static final String DATE = "date";
             public static final String EXPIRATION_DATE = "expiration_date";
             public static final String CATEGORY = "category";
+            public static final String TYPE = "item_type"; // Consumable or Borrowable
             public static final String SUPPLIER = "supplier";
             public static final String ROOM = "room";
-            public static final String QUANTITY = "quantity";
+            public static final String TOTAL_QUANTITY = "total_quantity";
+            public static final String AVAILABLE_QUANTITY = "available_quantity";
+            public static final String BORROWED_QUANTITY = "borrowed_quantity";
+            public static final String USED_QUANTITY = "used_quantity";
             public static final String UNIT = "unit";
             public static final String LOCATION = "location";
             public static final String BARCODE = "barcode";
@@ -22,8 +26,11 @@ public class SupplyDbSchema {
             public static final String CONDITION = "condition";
             public static final String STATUS = "status";
             public static final String IS_BORROWABLE = "is_borrowable";
+            
+            // For backward compatibility during migration
             public static final String BORROWED = "borrowed";
             public static final String BORROWER = "borrower";
+            public static final String QUANTITY = "quantity";
         }
     }
 
@@ -35,7 +42,7 @@ public class SupplyDbSchema {
             public static final String NAME = "name";
             public static final String BARCODE = "barcode";
             public static final String EMAIL = "email";
-            public static final String ROLE = "role"; // "ADMIN", "STAFF", "STUDENT"
+            public static final String ROLE = "role";
         }
     }
 
@@ -51,7 +58,7 @@ public class SupplyDbSchema {
             public static final String DATE_BORROWED = "date_borrowed";
             public static final String EXPECTED_RETURN_DATE = "expected_return_date";
             public static final String ACTUAL_RETURN_DATE = "actual_return_date";
-            public static final String STATUS = "status"; // "Borrowed" or "Returned"
+            public static final String STATUS = "status";
         }
     }
 
@@ -64,7 +71,7 @@ public class SupplyDbSchema {
             public static final String REQUESTER_NAME = "requester_name";
             public static final String QUANTITY = "quantity";
             public static final String DATE_REQUESTED = "date_requested";
-            public static final String STATUS = "status"; // "PENDING", "APPROVED", "REJECTED"
+            public static final String STATUS = "status";
         }
     }
 
@@ -82,7 +89,7 @@ public class SupplyDbSchema {
         }
     }
     
-    public static final class RoomTable { // Added for dynamic classrooms
+    public static final class RoomTable {
         public static final String NAME = "rooms";
         public static final class Cols {
             public static final String NAME = "name";
@@ -95,7 +102,7 @@ public class SupplyDbSchema {
             public static final String UUID = "uuid";
             public static final String ITEM_ID = "item_id";
             public static final String ITEM_NAME = "item_name";
-            public static final String ACTION = "action"; // "ADDED", "EDITED", "DELETED", "BORROWED", "RETURNED", "REQUESTED", "APPROVED", "REJECTED"
+            public static final String ACTION = "action";
             public static final String USER = "user";
             public static final String TIMESTAMP = "timestamp";
             public static final String DETAILS = "details";

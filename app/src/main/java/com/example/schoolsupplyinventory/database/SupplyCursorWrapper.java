@@ -22,15 +22,19 @@ public class SupplyCursorWrapper extends CursorWrapper {
         long date = getLong(getColumnIndexOrThrow(SupplyTable.Cols.DATE));
         long expirationDate = getLong(getColumnIndexOrThrow(SupplyTable.Cols.EXPIRATION_DATE));
         String categoryName = getString(getColumnIndexOrThrow(SupplyTable.Cols.CATEGORY));
+        String itemType = getString(getColumnIndexOrThrow(SupplyTable.Cols.TYPE));
         String supplier = getString(getColumnIndexOrThrow(SupplyTable.Cols.SUPPLIER));
-        String borrower = getString(getColumnIndexOrThrow(SupplyTable.Cols.BORROWER));
         String roomName = getString(getColumnIndexOrThrow(SupplyTable.Cols.ROOM));
-        int quantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.QUANTITY));
+        
+        int totalQuantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.TOTAL_QUANTITY));
+        int availableQuantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.AVAILABLE_QUANTITY));
+        int borrowedQuantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.BORROWED_QUANTITY));
+        int usedQuantity = getInt(getColumnIndexOrThrow(SupplyTable.Cols.USED_QUANTITY));
+        
         String unit = getString(getColumnIndexOrThrow(SupplyTable.Cols.UNIT));
         String location = getString(getColumnIndexOrThrow(SupplyTable.Cols.LOCATION));
         String barcode = getString(getColumnIndexOrThrow(SupplyTable.Cols.BARCODE));
         String propertyTag = getString(getColumnIndexOrThrow(SupplyTable.Cols.PROPERTY_TAG));
-        int isBorrowable = getInt(getColumnIndexOrThrow(SupplyTable.Cols.IS_BORROWABLE));
         
         String description = getString(getColumnIndexOrThrow(SupplyTable.Cols.DESCRIPTION));
         String condition = getString(getColumnIndexOrThrow(SupplyTable.Cols.CONDITION));
@@ -39,20 +43,24 @@ public class SupplyCursorWrapper extends CursorWrapper {
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
         item.setBrand(brand);
-        item.setDate(new Date(date));
+        item.setDateAdded(new Date(date));
         if (expirationDate != 0) {
             item.setExpirationDate(new Date(expirationDate));
         }
+        item.setCategory(categoryName != null ? categoryName : "OFFICE SUPPLIES");
+        item.setItemType(itemType != null ? itemType : SupplyItem.TYPE_CONSUMABLE);
         item.setSupplier(supplier);
-        item.setBorrower(borrower);
-        item.setQuantity(quantity);
+        item.setRoom(roomName != null ? roomName : "ITE OFFICE");
+        
+        item.setTotalQuantity(totalQuantity);
+        item.setAvailableQuantity(availableQuantity);
+        item.setBorrowedQuantity(borrowedQuantity);
+        item.setUsedQuantity(usedQuantity);
+        
         item.setUnit(unit != null ? unit : "Piece");
         item.setLocation(location);
         item.setBarcode(barcode);
-        item.setCategory(categoryName != null ? categoryName : "OFFICE SUPPLIES");
-        item.setRoom(roomName != null ? roomName : "ITE OFFICE");
         item.setPropertyTag(propertyTag != null ? propertyTag : "");
-        item.setBorrowable(isBorrowable != 0);
         
         item.setDescription(description != null ? description : "");
         item.setCondition(condition != null ? condition : "New");
