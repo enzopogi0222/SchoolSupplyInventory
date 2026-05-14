@@ -29,6 +29,7 @@ import java.util.stream.Collectors;
 public class DashboardFragment extends Fragment {
 
     private static final String ACTION_REQUEST_SUBMITTED = "REQUEST_SUBMITTED";
+    private static final String ACTION_RETURN_REQUESTED = "RETURN_REQUESTED";
     private static final String ACTION_REQUEST_APPROVED = "REQUEST_APPROVED";
     private static final String ACTION_REQUEST_REJECTED = "REQUEST_REJECTED";
 
@@ -82,39 +83,40 @@ public class DashboardFragment extends Fragment {
         // Action: View Inventory (Available for both)
         v.findViewById(R.id.dashboard_view_inventory).setOnClickListener(view -> loadFragment(new SupplyListFragment()));
         
-        // Restriction: Add Item and Reports only for Admin
+        // Return is available for both roles (Staff requests, Admin issues)
+        returnCard.setVisibility(View.VISIBLE);
+
         if (mIsAdmin) {
             mAddItemCard.setVisibility(View.VISIBLE);
             mAddItemCard.setOnClickListener(view -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
             mReportsButton.setVisibility(View.VISIBLE);
             mReportsButton.setOnClickListener(v1 -> loadFragment(new ReportsFragment()));
             borrowCard.setVisibility(View.VISIBLE);
-            returnCard.setVisibility(View.VISIBLE);
             useCard.setVisibility(View.VISIBLE);
             myRequestsCard.setVisibility(View.GONE);
             pendingRequestsCard.setVisibility(View.VISIBLE);
             pendingRequestsCard.setOnClickListener(v1 -> loadFragment(new AdminPendingRequestsFragment()));
+            
+            returnCard.setOnClickListener(v1 -> showReturnBottomSheet());
+            borrowCard.setOnClickListener(v1 -> showBorrowBottomSheet());
+            useCard.setOnClickListener(v1 -> showUseConsumableDialog());
         } else {
             mAddItemCard.setVisibility(View.GONE);
             mReportsButton.setVisibility(View.GONE);
             borrowCard.setVisibility(View.GONE);
-            returnCard.setVisibility(View.GONE);
             useCard.setVisibility(View.GONE);
             myRequestsCard.setVisibility(View.VISIBLE);
             myRequestsCard.setOnClickListener(v1 -> loadFragment(new StaffMyRequestsFragment()));
             pendingRequestsCard.setVisibility(View.GONE);
+            
+            returnCard.setOnClickListener(v1 -> showStaffReturnBottomSheet());
         }
-
-        // Action: Borrow/Return/Use (Admin only — staff uses formal requests from item details)
-        borrowCard.setOnClickListener(v1 -> showBorrowBottomSheet());
-        returnCard.setOnClickListener(v1 -> showReturnBottomSheet());
-        useCard.setOnClickListener(v1 -> showUseConsumableDialog());
         
         v.findViewById(R.id.dashboard_logout).setOnClickListener(v1 -> {
             SupplyLab lab = SupplyLab.get(getActivity());
             lab.setCurrentUser("");
             lab.setCurrentRole("");
-            requireActivity().getSharedPreferences("SupplyFlow", android.content.Context.MODE_PRIVATE).edit().clear().apply();
+            requireActivity().getSharedPreferences("InventoSchool", android.content.Context.MODE_PRIVATE).edit().clear().apply();
             startActivity(new Intent(getActivity(), LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         });
 
@@ -336,6 +338,79 @@ public class DashboardFragment extends Fragment {
         bottomSheetDialog.show();
     }
 
+    private void showStaffReturnBottomSheet() {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(requireContext());
+        View view = getLayoutInflater().inflate(R.layout.bottom_sheet_return, null);
+        bottomSheetDialog.setContentView(view);
+
+        TextView title = view.findViewById(R.id.bottom_sheet_title);
+        title.setText("Request Item Return");
+
+        MaterialAutoCompleteTextView recordSearch = view.findViewById(R.id.return_item_autocomplete);
+        recordSearch.setHint("Select borrowed item to return...");
+        recordSearch.setThreshold(0);
+
+        TextView returnInfoText = view.findViewById(R.id.return_info_text);
+        TextInputEditText qtyEdit = view.findViewById(R.id.return_qty_edit);
+        MaterialButton confirmBtn = view.findViewById(R.id.btn_confirm_return);
+        confirmBtn.setText("Submit Return Request");
+
+        SupplyLab lab = SupplyLab.get(getActivity());
+        String currentUser = lab.getCurrentUser();
+
+        lab.getActiveBorrowRecordsForUserAsync(currentUser, records -> {
+            lab.getItemsAsync(items -> {
+                List<String> displayStrings = records.stream()
+                        .map(record -> {
+                            SupplyItem item = items.stream()
+                                    .filter(i -> i.getId().equals(record.getItemId()))
+                                    .findFirst().orElse(null);
+                            String unitInfo = (record.getUnitId() != null && !record.getUnitId().isEmpty()) 
+                                    ? " [" + record.getUnitId() + "]" : "";
+                            return (item != null ? item.getName() : "Item") + unitInfo + " (" + record.getQuantity() + ")";
+                        }).collect(Collectors.toList());
+
+                ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, displayStrings);
+                recordSearch.setAdapter(adapter);
+                recordSearch.setOnClickListener(v -> recordSearch.showDropDown());
+                recordSearch.setOnItemClickListener((parent, view1, position, id) -> {
+                    mSelectedReturnRecord = records.get(position);
+                    returnInfoText.setText("Requesting return for: " + recordSearch.getAdapter().getItem(position));
+                    qtyEdit.setText(String.valueOf(mSelectedReturnRecord.getQuantity()));
+                });
+            });
+        });
+
+        confirmBtn.setOnClickListener(v -> {
+            String qtyStr = qtyEdit.getText().toString().trim();
+            if (mSelectedReturnRecord == null || qtyStr.isEmpty()) return;
+            int qty = Integer.parseInt(qtyStr);
+            if (qty <= 0 || qty > mSelectedReturnRecord.getQuantity()) {
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SupplyRequest request = new SupplyRequest();
+            request.setItemId(mSelectedReturnRecord.getItemId());
+            request.setRequesterName(currentUser);
+            request.setQuantity(qty);
+            request.setRequestType(SupplyRequest.TYPE_RETURN);
+            request.setBorrowRecordId(mSelectedReturnRecord.getId());
+            request.setUnitId(mSelectedReturnRecord.getUnitId());
+
+            lab.submitSupplyRequestAsync(request, success -> {
+                if (success) {
+                    Toast.makeText(getActivity(), "Return request submitted for verification", Toast.LENGTH_SHORT).show();
+                    loadRecentActivity();
+                    bottomSheetDialog.dismiss();
+                } else {
+                    Toast.makeText(getActivity(), "Failed to submit request", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+        bottomSheetDialog.show();
+    }
+
     private void updateStats() {
         SupplyLab.get(getActivity()).getItemsAsync(items -> {
             if (!isAdded()) return;
@@ -391,6 +466,7 @@ public class DashboardFragment extends Fragment {
         }
         switch (r.getAction()) {
             case ACTION_REQUEST_SUBMITTED:
+            case ACTION_RETURN_REQUESTED:
                 return staffEmail.equalsIgnoreCase(r.getUser());
             case ACTION_REQUEST_APPROVED:
             case ACTION_REQUEST_REJECTED:
@@ -406,6 +482,9 @@ public class DashboardFragment extends Fragment {
         String item = record.getItemName() != null ? record.getItemName() : "";
         if (ACTION_REQUEST_SUBMITTED.equals(action)) {
             return "Request submitted: " + item;
+        }
+        if (ACTION_RETURN_REQUESTED.equals(action)) {
+            return "Return requested: " + item;
         }
         if (ACTION_REQUEST_APPROVED.equals(action)) {
             return "Request approved: " + item;

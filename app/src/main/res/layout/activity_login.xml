@@ -39,7 +39,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="32dp"
-                android:text="SupplyFlow"
+                android:text="InventoSchool"
                 android:textAppearance="?attr/textAppearanceHeadlineLarge"
                 android:textStyle="bold" />
 

@@ -76,7 +76,7 @@ public class SupplyListFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
-        mIsAdmin = "ADMIN".equals(getActivity().getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN"));
+        mIsAdmin = "ADMIN".equals(getActivity().getSharedPreferences("InventoSchool", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN"));
 
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         final int cacheSize = maxMemory / 8;
@@ -111,6 +111,13 @@ public class SupplyListFragment extends Fragment {
         mSupplyRecyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
 
         mSearchEditText = view.findViewById(R.id.search_edit_text);
+        mSearchEditText.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilters(); }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
+        mMainFilterChipGroup = view.findViewById(R.id.main_filter_chip_group);
         mSearchEditText.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilters(); }

@@ -111,7 +111,7 @@ public class OverdueCheckWorker extends Worker {
 
     private void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            CharSequence name = "SupplyFlow Inventory Alerts";
+            CharSequence name = "InventoSchool Inventory Alerts";
             String description = "Alerts for low stock, expiring items, and overdue borrows";
             int importance = NotificationManager.IMPORTANCE_HIGH;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID_ALERTS, name, importance);

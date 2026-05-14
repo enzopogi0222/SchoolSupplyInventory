@@ -15,7 +15,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 20;
+    private static final int VERSION = 21;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -152,7 +152,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 RequestTable.Cols.REQUEST_TYPE + ", " +
                 RequestTable.Cols.PURPOSE + ", " +
                 RequestTable.Cols.EXPECTED_RETURN_DATE + " integer default 0, " +
-                RequestTable.Cols.UNIT_ID + ")"
+                RequestTable.Cols.UNIT_ID + ", " +
+                RequestTable.Cols.BORROW_RECORD_ID + ")"
         );
     }
 
@@ -183,6 +184,9 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
             db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.PURPOSE + " text");
             db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.EXPECTED_RETURN_DATE + " integer default 0");
             db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.UNIT_ID + " text");
+        }
+        if (oldVersion < 21) {
+            db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.BORROW_RECORD_ID + " text");
         }
     }
 }

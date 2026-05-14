@@ -35,7 +35,7 @@ public class SupplyLab {
     private SQLiteDatabase mDatabase;
     private final ExecutorService mExecutor = Executors.newFixedThreadPool(4);
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
-    private String mCurrentUser = "admin@supplyflow.com";
+    private String mCurrentUser = "admin@invento.com";
     private String mCurrentRole = "ADMIN";
 
     public interface Callback<T> {
@@ -56,7 +56,7 @@ public class SupplyLab {
     }
 
     public void refreshFromPreferences() {
-        SharedPreferences prefs = mContext.getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE);
+        SharedPreferences prefs = mContext.getSharedPreferences("InventoSchool", Context.MODE_PRIVATE);
         String email = prefs.getString("USER_EMAIL", "");
         if (!email.isEmpty()) {
             mCurrentUser = email;
@@ -177,6 +177,36 @@ public class SupplyLab {
         return true;
     }
 
+    /**
+     * Applies a return inside an active DB transaction.
+     */
+    private boolean applyReturnInTransaction(SupplyItem item, BorrowRecord record, int returnQuantity) {
+        if (item != null) {
+            item.setAvailableQuantity(item.getAvailableQuantity() + returnQuantity);
+            item.setBorrowedQuantity(Math.max(0, item.getBorrowedQuantity() - returnQuantity));
+            if (item.getBorrowedQuantity() == 0) {
+                item.setStatus("Available");
+            }
+            String uuidString = item.getId().toString();
+            ContentValues supplyValues = getContentValues(item);
+            mDatabase.update(SupplyTable.NAME, supplyValues, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
+        }
+
+        ContentValues values = new ContentValues();
+        int remainingInRecord = record.getQuantity() - returnQuantity;
+        if (remainingInRecord <= 0) {
+            values.put(BorrowTable.Cols.STATUS, "Returned");
+            values.put(BorrowTable.Cols.ACTUAL_RETURN_DATE, System.currentTimeMillis());
+            values.put(BorrowTable.Cols.QUANTITY, 0);
+        } else {
+            values.put(BorrowTable.Cols.QUANTITY, remainingInRecord);
+        }
+        mDatabase.update(BorrowTable.NAME, values, BorrowTable.Cols.UUID + " = ?", new String[]{record.getId().toString()});
+
+        logHistory(record.getItemId(), item != null ? item.getName() : "Unknown", "RETURNED", "Returned " + returnQuantity + " units");
+        return true;
+    }
+
     public void useConsumableAsync(UUID itemId, int quantity, Callback<Boolean> callback) {
         mExecutor.execute(() -> {
             mDatabase.beginTransaction();
@@ -216,29 +246,10 @@ public class SupplyLab {
             mDatabase.beginTransaction();
             try {
                 SupplyItem item = getItem(record.getItemId());
-                if (item != null) {
-                    item.setAvailableQuantity(item.getAvailableQuantity() + returnQuantity);
-                    item.setBorrowedQuantity(Math.max(0, item.getBorrowedQuantity() - returnQuantity));
-                    if (item.getBorrowedQuantity() == 0) {
-                        item.setStatus("Available");
-                    }
-                    String uuidString = item.getId().toString();
-                    ContentValues supplyValues = getContentValues(item);
-                    mDatabase.update(SupplyTable.NAME, supplyValues, SupplyTable.Cols.UUID + " = ?", new String[]{uuidString});
+                if (!applyReturnInTransaction(item, record, returnQuantity)) {
+                    mMainHandler.post(() -> callback.onComplete(false));
+                    return;
                 }
-
-                ContentValues values = new ContentValues();
-                int remainingInRecord = record.getQuantity() - returnQuantity;
-                if (remainingInRecord <= 0) {
-                    values.put(BorrowTable.Cols.STATUS, "Returned");
-                    values.put(BorrowTable.Cols.ACTUAL_RETURN_DATE, System.currentTimeMillis());
-                    values.put(BorrowTable.Cols.QUANTITY, 0);
-                } else {
-                    values.put(BorrowTable.Cols.QUANTITY, remainingInRecord);
-                }
-                mDatabase.update(BorrowTable.NAME, values, BorrowTable.Cols.UUID + " = ?", new String[]{record.getId().toString()});
-
-                logHistory(record.getItemId(), item != null ? item.getName() : "Unknown", "RETURNED", "Returned " + returnQuantity + " units");
                 mDatabase.setTransactionSuccessful();
                 mMainHandler.post(() -> callback.onComplete(true));
             } finally {
@@ -401,6 +412,39 @@ public class SupplyLab {
         });
     }
 
+    public void getActiveBorrowRecordsForUserAsync(String email, Callback<List<BorrowRecord>> callback) {
+        mExecutor.execute(() -> {
+            List<BorrowRecord> records = new ArrayList<>();
+            Cursor cursor = mDatabase.query(BorrowTable.NAME, null,
+                    BorrowTable.Cols.STATUS + " = ? AND " + BorrowTable.Cols.BORROWER_NAME + " = ?",
+                    new String[]{"Borrowed", email},
+                    null, null, BorrowTable.Cols.DATE_BORROWED + " ASC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    records.add(getBorrowRecordFromCursor(cursor));
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(records));
+        });
+    }
+
+    public BorrowRecord getBorrowRecord(UUID id) {
+        Cursor cursor = mDatabase.query(BorrowTable.NAME, null,
+                BorrowTable.Cols.UUID + " = ?", new String[]{id.toString()},
+                null, null, null);
+        try {
+            if (cursor.getCount() == 0) return null;
+            cursor.moveToFirst();
+            return getBorrowRecordFromCursor(cursor);
+        } finally {
+            cursor.close();
+        }
+    }
+
     private BorrowRecord getBorrowRecordFromCursor(Cursor cursor) {
         BorrowRecord record = new BorrowRecord(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.UUID))));
         record.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(BorrowTable.Cols.ITEM_ID))));
@@ -486,7 +530,7 @@ public class SupplyLab {
                 return;
             }
             String purpose = request.getPurpose() != null ? request.getPurpose().trim() : "";
-            if (purpose.isEmpty()) {
+            if (purpose.isEmpty() && !SupplyRequest.TYPE_RETURN.equals(request.getRequestType())) {
                 mMainHandler.post(() -> callback.onComplete(false));
                 return;
             }
@@ -499,16 +543,25 @@ public class SupplyLab {
                     mMainHandler.post(() -> callback.onComplete(false));
                     return;
                 }
+                if (item.getAvailableQuantity() < request.getQuantity()) {
+                    mMainHandler.post(() -> callback.onComplete(false));
+                    return;
+                }
             } else if (SupplyRequest.TYPE_CONSUME.equals(request.getRequestType())) {
                 if (!SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType())) {
                     mMainHandler.post(() -> callback.onComplete(false));
                     return;
                 }
+                if (item.getAvailableQuantity() < request.getQuantity()) {
+                    mMainHandler.post(() -> callback.onComplete(false));
+                    return;
+                }
+            } else if (SupplyRequest.TYPE_RETURN.equals(request.getRequestType())) {
+                if (request.getBorrowRecordId() == null) {
+                    mMainHandler.post(() -> callback.onComplete(false));
+                    return;
+                }
             } else {
-                mMainHandler.post(() -> callback.onComplete(false));
-                return;
-            }
-            if (item.getAvailableQuantity() < request.getQuantity()) {
                 mMainHandler.post(() -> callback.onComplete(false));
                 return;
             }
@@ -522,7 +575,9 @@ public class SupplyLab {
             mDatabase.beginTransaction();
             try {
                 mDatabase.insert(RequestTable.NAME, null, getRequestContentValues(request));
-                logHistory(request.getItemId(), item.getName(), "REQUEST_SUBMITTED",
+                String logAction = "REQUEST_SUBMITTED";
+                if (SupplyRequest.TYPE_RETURN.equals(request.getRequestType())) logAction = "RETURN_REQUESTED";
+                logHistory(request.getItemId(), item.getName(), logAction,
                         "Pending " + request.getRequestType() + " request: qty " + request.getQuantity() + ". " + purpose);
                 mDatabase.setTransactionSuccessful();
                 mMainHandler.post(() -> callback.onComplete(true));
@@ -542,21 +597,35 @@ public class SupplyLab {
                     return;
                 }
                 SupplyItem item = getItem(req.getItemId());
-                if (item == null || item.getAvailableQuantity() < req.getQuantity()) {
+                if (item == null) {
                     mMainHandler.post(() -> callback.onComplete(false));
                     return;
                 }
 
-                boolean applied;
+                boolean applied = false;
                 if (SupplyRequest.TYPE_BORROW.equals(req.getRequestType())) {
+                    if (item.getAvailableQuantity() < req.getQuantity()) {
+                        mMainHandler.post(() -> callback.onComplete(false));
+                        return;
+                    }
                     long due = req.getExpectedReturnDate() != null
                             ? req.getExpectedReturnDate().getTime()
                             : System.currentTimeMillis() + 604800000L;
                     applied = applyBorrowInTransaction(item, req.getItemId(), req.getRequesterName(),
                             req.getQuantity(), System.currentTimeMillis(), due, req.getUnitId());
-                } else {
+                } else if (SupplyRequest.TYPE_CONSUME.equals(req.getRequestType())) {
+                    if (item.getAvailableQuantity() < req.getQuantity()) {
+                        mMainHandler.post(() -> callback.onComplete(false));
+                        return;
+                    }
                     applied = applyConsumeInTransaction(item, req.getQuantity());
+                } else if (SupplyRequest.TYPE_RETURN.equals(req.getRequestType())) {
+                    BorrowRecord br = getBorrowRecord(req.getBorrowRecordId());
+                    if (br != null) {
+                        applied = applyReturnInTransaction(item, br, req.getQuantity());
+                    }
                 }
+
                 if (!applied) {
                     mMainHandler.post(() -> callback.onComplete(false));
                     return;
@@ -614,6 +683,7 @@ public class SupplyLab {
         long exp = r.getExpectedReturnDate() != null ? r.getExpectedReturnDate().getTime() : 0L;
         values.put(RequestTable.Cols.EXPECTED_RETURN_DATE, exp);
         values.put(RequestTable.Cols.UNIT_ID, r.getUnitId() != null ? r.getUnitId() : "");
+        values.put(RequestTable.Cols.BORROW_RECORD_ID, r.getBorrowRecordId() != null ? r.getBorrowRecordId().toString() : "");
         return values;
     }
 
@@ -650,6 +720,13 @@ public class SupplyLab {
             String uid = cursor.getString(unitIdx);
             if (uid != null && !uid.isEmpty()) {
                 request.setUnitId(uid);
+            }
+        }
+        int borrowRecIdx = cursor.getColumnIndex(RequestTable.Cols.BORROW_RECORD_ID);
+        if (borrowRecIdx >= 0 && !cursor.isNull(borrowRecIdx)) {
+            String brid = cursor.getString(borrowRecIdx);
+            if (brid != null && !brid.isEmpty()) {
+                request.setBorrowRecordId(UUID.fromString(brid));
             }
         }
         return request;

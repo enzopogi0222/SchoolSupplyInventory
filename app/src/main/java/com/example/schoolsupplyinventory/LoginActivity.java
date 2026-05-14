@@ -26,9 +26,9 @@ public class LoginActivity extends AppCompatActivity {
             String email = mEmailField.getText().toString().trim();
             String password = mPasswordField.getText().toString().trim();
 
-            if (email.equals("admin@supplyflow.com") && password.equals("password")) {
+            if (email.equals("admin@invento.com") && password.equals("password")) {
                 loginAs(email, "ADMIN");
-            } else if (email.equals("staff@supplyflow.com") && password.equals("password123")) {
+            } else if (email.equals("jerica@invento.com") && password.equals("password123")) {
                 loginAs(email, "STAFF");
             } else if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
@@ -46,7 +46,7 @@ public class LoginActivity extends AppCompatActivity {
         SupplyLab lab = SupplyLab.get(this);
         lab.setCurrentUser(email);
         // We store the role in the lab for easy access across fragments
-        getSharedPreferences("SupplyFlow", MODE_PRIVATE).edit()
+        getSharedPreferences("InventoSchool", MODE_PRIVATE).edit()
                 .putString("USER_EMAIL", email)
                 .putString("USER_ROLE", role)
                 .apply();

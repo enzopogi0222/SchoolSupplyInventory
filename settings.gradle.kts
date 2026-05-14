@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "supplyflow"
+rootProject.name = "InventoSchool"
 include(":app")

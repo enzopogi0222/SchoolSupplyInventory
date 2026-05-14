@@ -79,6 +79,7 @@ public class SupplyDbSchema {
             public static final String PURPOSE = "purpose";
             public static final String EXPECTED_RETURN_DATE = "expected_return_date";
             public static final String UNIT_ID = "unit_id";
+            public static final String BORROW_RECORD_ID = "borrow_record_id";
         }
     }
 

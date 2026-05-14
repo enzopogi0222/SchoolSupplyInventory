@@ -23,7 +23,7 @@ public class InventoryActivity extends AppCompatActivity {
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         
         // Retrieve role
-        String role = getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN");
+        String role = getSharedPreferences("InventoSchool", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN");
         boolean isAdmin = "ADMIN".equals(role);
 
         // Hide Reports tab if not admin

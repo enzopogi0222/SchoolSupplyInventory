@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">SupplyFlow</string>
+    <string name="app_name">InventoSchool</string>
 
     <string name="supply_item_name">Supply Item Name</string>
     <string name="available_text">Available</string>
