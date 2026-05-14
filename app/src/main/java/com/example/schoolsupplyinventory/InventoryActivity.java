@@ -18,6 +18,8 @@ public class InventoryActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_inventory);
 
+        SupplyLab.get(this).refreshFromPreferences();
+
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
         
         // Retrieve role

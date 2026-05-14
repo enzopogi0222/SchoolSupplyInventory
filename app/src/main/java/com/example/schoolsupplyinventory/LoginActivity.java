@@ -47,6 +47,7 @@ public class LoginActivity extends AppCompatActivity {
         lab.setCurrentUser(email);
         // We store the role in the lab for easy access across fragments
         getSharedPreferences("SupplyFlow", MODE_PRIVATE).edit()
+                .putString("USER_EMAIL", email)
                 .putString("USER_ROLE", role)
                 .apply();
                 

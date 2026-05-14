@@ -1,6 +1,5 @@
 package com.example.schoolsupplyinventory;
 
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
@@ -20,6 +19,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
@@ -28,7 +28,12 @@ import java.util.stream.Collectors;
 
 public class DashboardFragment extends Fragment {
 
+    private static final String ACTION_REQUEST_SUBMITTED = "REQUEST_SUBMITTED";
+    private static final String ACTION_REQUEST_APPROVED = "REQUEST_APPROVED";
+    private static final String ACTION_REQUEST_REJECTED = "REQUEST_REJECTED";
+
     private TextView mTotalCountText, mConsumableCountText, mBorrowableCountText, mBorrowedCountText, mLowStockCountText, mUserNameText;
+    private TextView mActivitySectionTitle;
     private ViewGroup mRecentActivityContainer;
     private View mAddItemCard;
     private MaterialButton mReportsButton;
@@ -54,13 +59,25 @@ public class DashboardFragment extends Fragment {
         mBorrowedCountText = v.findViewById(R.id.dashboard_borrowed_count);
         mLowStockCountText = v.findViewById(R.id.dashboard_low_stock_count);
         mUserNameText = v.findViewById(R.id.dashboard_user_name);
+        mActivitySectionTitle = v.findViewById(R.id.dashboard_activity_section_title);
+        mActivitySectionTitle.setText(mIsAdmin ? "Recent Inventory Activity" : "Request history");
         mRecentActivityContainer = v.findViewById(R.id.recent_activity_container);
 
         mAddItemCard = v.findViewById(R.id.dashboard_add_item);
         mReportsButton = v.findViewById(R.id.dashboard_reports);
 
+        View borrowCard = v.findViewById(R.id.dashboard_borrow_item);
+        View returnCard = v.findViewById(R.id.dashboard_return_item);
+        View useCard = v.findViewById(R.id.dashboard_use_consumable);
+        View myRequestsCard = v.findViewById(R.id.dashboard_my_requests);
+        View pendingRequestsCard = v.findViewById(R.id.dashboard_pending_requests);
+
         // Reflect Role in Header
-        mUserNameText.setText(mIsAdmin ? "System Admin" : "Staff Member");
+        if (mIsAdmin) {
+            mUserNameText.setText("System Admin");
+        } else {
+            mUserNameText.setText(SupplyLab.get(getActivity()).getCurrentUser());
+        }
 
         // Action: View Inventory (Available for both)
         v.findViewById(R.id.dashboard_view_inventory).setOnClickListener(view -> loadFragment(new SupplyListFragment()));
@@ -71,17 +88,33 @@ public class DashboardFragment extends Fragment {
             mAddItemCard.setOnClickListener(view -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
             mReportsButton.setVisibility(View.VISIBLE);
             mReportsButton.setOnClickListener(v1 -> loadFragment(new ReportsFragment()));
+            borrowCard.setVisibility(View.VISIBLE);
+            returnCard.setVisibility(View.VISIBLE);
+            useCard.setVisibility(View.VISIBLE);
+            myRequestsCard.setVisibility(View.GONE);
+            pendingRequestsCard.setVisibility(View.VISIBLE);
+            pendingRequestsCard.setOnClickListener(v1 -> loadFragment(new AdminPendingRequestsFragment()));
         } else {
             mAddItemCard.setVisibility(View.GONE);
             mReportsButton.setVisibility(View.GONE);
+            borrowCard.setVisibility(View.GONE);
+            returnCard.setVisibility(View.GONE);
+            useCard.setVisibility(View.GONE);
+            myRequestsCard.setVisibility(View.VISIBLE);
+            myRequestsCard.setOnClickListener(v1 -> loadFragment(new StaffMyRequestsFragment()));
+            pendingRequestsCard.setVisibility(View.GONE);
         }
 
-        // Action: Borrow/Return/Use (Available for both)
-        v.findViewById(R.id.dashboard_borrow_item).setOnClickListener(v1 -> showBorrowBottomSheet());
-        v.findViewById(R.id.dashboard_return_item).setOnClickListener(v1 -> showReturnBottomSheet());
-        v.findViewById(R.id.dashboard_use_consumable).setOnClickListener(v1 -> showUseConsumableDialog());
+        // Action: Borrow/Return/Use (Admin only — staff uses formal requests from item details)
+        borrowCard.setOnClickListener(v1 -> showBorrowBottomSheet());
+        returnCard.setOnClickListener(v1 -> showReturnBottomSheet());
+        useCard.setOnClickListener(v1 -> showUseConsumableDialog());
         
         v.findViewById(R.id.dashboard_logout).setOnClickListener(v1 -> {
+            SupplyLab lab = SupplyLab.get(getActivity());
+            lab.setCurrentUser("");
+            lab.setCurrentRole("");
+            requireActivity().getSharedPreferences("SupplyFlow", android.content.Context.MODE_PRIVATE).edit().clear().apply();
             startActivity(new Intent(getActivity(), LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         });
 
@@ -324,18 +357,63 @@ public class DashboardFragment extends Fragment {
         mRecentActivityContainer.removeAllViews();
         SupplyLab.get(getActivity()).getAllHistoryAsync(records -> {
             if (!isAdded()) return;
-            int count = 0;
+            List<HistoryRecord> toShow;
+            if (mIsAdmin) {
+                toShow = new ArrayList<>();
+                for (int i = 0; i < records.size() && i < 5; i++) {
+                    toShow.add(records.get(i));
+                }
+            } else {
+                String me = SupplyLab.get(requireContext()).getCurrentUser();
+                toShow = records.stream()
+                        .filter(r -> isStaffRequestHistoryEntry(r, me))
+                        .limit(12)
+                        .collect(Collectors.toList());
+            }
             LayoutInflater inflater = LayoutInflater.from(requireContext());
-            for (HistoryRecord record : records) {
-                if (count >= 5) break;
+            SimpleDateFormat fmt = new SimpleDateFormat("MMM dd", Locale.getDefault());
+            for (HistoryRecord record : toShow) {
                 View activityView = inflater.inflate(R.layout.list_item_activity, mRecentActivityContainer, false);
-                ((TextView) activityView.findViewById(R.id.activity_title)).setText(record.getAction() + ": " + record.getItemName());
+                ((TextView) activityView.findViewById(R.id.activity_title)).setText(formatActivityTitle(record));
                 ((TextView) activityView.findViewById(R.id.activity_subtitle)).setText(record.getDetails());
-                ((TextView) activityView.findViewById(R.id.activity_time)).setText(new SimpleDateFormat("MMM dd", Locale.getDefault()).format(record.getTimestamp()));
+                ((TextView) activityView.findViewById(R.id.activity_time)).setText(fmt.format(record.getTimestamp()));
                 mRecentActivityContainer.addView(activityView);
-                count++;
             }
         });
+    }
+
+    /**
+     * Staff dashboard: only request workflow (their submissions + admin approve/reject on their requests).
+     */
+    private static boolean isStaffRequestHistoryEntry(HistoryRecord r, String staffEmail) {
+        if (r.getAction() == null || staffEmail == null || staffEmail.isEmpty()) {
+            return false;
+        }
+        switch (r.getAction()) {
+            case ACTION_REQUEST_SUBMITTED:
+                return staffEmail.equalsIgnoreCase(r.getUser());
+            case ACTION_REQUEST_APPROVED:
+            case ACTION_REQUEST_REJECTED:
+                String details = r.getDetails() != null ? r.getDetails() : "";
+                return details.contains(staffEmail);
+            default:
+                return false;
+        }
+    }
+
+    private static String formatActivityTitle(HistoryRecord record) {
+        String action = record.getAction() != null ? record.getAction() : "";
+        String item = record.getItemName() != null ? record.getItemName() : "";
+        if (ACTION_REQUEST_SUBMITTED.equals(action)) {
+            return "Request submitted: " + item;
+        }
+        if (ACTION_REQUEST_APPROVED.equals(action)) {
+            return "Request approved: " + item;
+        }
+        if (ACTION_REQUEST_REJECTED.equals(action)) {
+            return "Request rejected: " + item;
+        }
+        return action + ": " + item;
     }
 
     private void updateDateButtonText(MaterialButton button) {

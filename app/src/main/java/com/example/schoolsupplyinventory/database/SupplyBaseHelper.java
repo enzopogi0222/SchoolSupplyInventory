@@ -15,7 +15,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 19;
+    private static final int VERSION = 20;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -144,10 +144,15 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 " _id integer primary key autoincrement, " +
                 RequestTable.Cols.UUID + ", " +
                 RequestTable.Cols.ITEM_ID + ", " +
+                RequestTable.Cols.ITEM_TITLE + ", " +
                 RequestTable.Cols.REQUESTER_NAME + ", " +
                 RequestTable.Cols.QUANTITY + ", " +
                 RequestTable.Cols.DATE_REQUESTED + ", " +
-                RequestTable.Cols.STATUS + ")"
+                RequestTable.Cols.STATUS + ", " +
+                RequestTable.Cols.REQUEST_TYPE + ", " +
+                RequestTable.Cols.PURPOSE + ", " +
+                RequestTable.Cols.EXPECTED_RETURN_DATE + " integer default 0, " +
+                RequestTable.Cols.UNIT_ID + ")"
         );
     }
 
@@ -171,6 +176,13 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 19) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.UNIT_IDENTIFIERS + " text");
             db.execSQL("alter table " + BorrowTable.NAME + " add column " + BorrowTable.Cols.UNIT_ID + " text");
+        }
+        if (oldVersion < 20) {
+            db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.ITEM_TITLE + " text");
+            db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.REQUEST_TYPE + " text default 'CONSUME'");
+            db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.PURPOSE + " text");
+            db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.EXPECTED_RETURN_DATE + " integer default 0");
+            db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.UNIT_ID + " text");
         }
     }
 }

@@ -2,6 +2,7 @@ package com.example.schoolsupplyinventory;
 
 import android.Manifest;
 import android.app.Activity;
+import androidx.appcompat.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -41,6 +42,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -405,6 +407,27 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     @Override
+    public void onPrepareOptionsMenu(@NonNull Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        MenuItem borrow = menu.findItem(R.id.action_borrow);
+        MenuItem use = menu.findItem(R.id.action_use);
+        MenuItem request = menu.findItem(R.id.action_request);
+        MenuItem delete = menu.findItem(R.id.delete_supply);
+        if (borrow != null) {
+            borrow.setVisible(mIsAdmin && !mIsNewItem);
+        }
+        if (use != null) {
+            use.setVisible(mIsAdmin && !mIsNewItem);
+        }
+        if (request != null) {
+            request.setVisible(!mIsAdmin && !mIsNewItem);
+        }
+        if (delete != null) {
+            delete.setVisible(mIsAdmin && !mIsNewItem);
+        }
+    }
+
+    @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
@@ -415,13 +438,119 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     @Override
+    public void onResume() {
+        super.onResume();
+        requireActivity().invalidateOptionsMenu();
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.delete_supply) { confirmDelete(); return true; }
+        if (id == R.id.action_request) { showStaffRequestDialog(); return true; }
         if (id == R.id.action_borrow) { showBorrowDialog(); return true; }
         if (id == R.id.action_use) { showUseDialog(); return true; }
         if (id == R.id.action_history) { showHistoryDialog(); return true; }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showStaffRequestDialog() {
+        if (mItem == null || mIsNewItem || getActivity() == null) {
+            return;
+        }
+
+        View dlgView = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_staff_request, null);
+        TextView typeLabel = dlgView.findViewById(R.id.staff_request_type_label);
+        TextInputEditText qtyEdit = dlgView.findViewById(R.id.staff_request_quantity);
+        TextInputEditText purposeEdit = dlgView.findViewById(R.id.staff_request_purpose);
+        TextInputLayout unitLayout = dlgView.findViewById(R.id.staff_request_unit_layout);
+        TextInputEditText unitEdit = dlgView.findViewById(R.id.staff_request_unit_id);
+        MaterialButton dueBtn = dlgView.findViewById(R.id.staff_request_due_date_btn);
+
+        final boolean borrow = SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(mItem.getItemType());
+        final Calendar[] dueHolder = new Calendar[]{Calendar.getInstance()};
+        dueHolder[0].add(Calendar.DAY_OF_YEAR, 7);
+        SimpleDateFormat fmt = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
+
+        if (borrow) {
+            typeLabel.setText("Borrow request (returnable item)");
+            dueBtn.setVisibility(View.VISIBLE);
+            dueBtn.setText("Return by: " + fmt.format(dueHolder[0].getTime()));
+            dueBtn.setOnClickListener(v -> {
+                MaterialDatePicker<Long> picker = MaterialDatePicker.Builder.datePicker()
+                        .setTitleText("Expected return date")
+                        .setSelection(dueHolder[0].getTimeInMillis())
+                        .build();
+                picker.addOnPositiveButtonClickListener(sel -> {
+                    dueHolder[0].setTimeInMillis(sel);
+                    dueBtn.setText("Return by: " + fmt.format(dueHolder[0].getTime()));
+                });
+                picker.show(getParentFragmentManager(), "STAFF_RETURN_DATE");
+            });
+            if (!mItem.getUnitIdentifiersList().isEmpty()) {
+                unitLayout.setVisibility(View.VISIBLE);
+            }
+        } else {
+            typeLabel.setText("Consume request (consumable item)");
+        }
+        qtyEdit.setText("1");
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Submit request")
+                .setView(dlgView)
+                .setPositiveButton("Submit", null)
+                .setNegativeButton("Cancel", null)
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String qtyStr = qtyEdit.getText() != null ? qtyEdit.getText().toString().trim() : "";
+            String purpose = purposeEdit.getText() != null ? purposeEdit.getText().toString().trim() : "";
+            if (qtyStr.isEmpty() || purpose.isEmpty()) {
+                Toast.makeText(getActivity(), "Enter quantity and purpose", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int qty;
+            try {
+                qty = Integer.parseInt(qtyStr);
+            } catch (NumberFormatException ex) {
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (qty <= 0 || qty > mItem.getAvailableQuantity()) {
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            SupplyRequest req = new SupplyRequest();
+            req.setItemId(mItem.getId());
+            req.setItemTitle(mItem.getName());
+            req.setRequesterName(SupplyLab.get(requireContext()).getCurrentUser());
+            req.setQuantity(qty);
+            req.setPurpose(purpose);
+            if (borrow) {
+                req.setRequestType(SupplyRequest.TYPE_BORROW);
+                req.setExpectedReturnDate(dueHolder[0].getTime());
+                String uid = unitEdit.getText() != null ? unitEdit.getText().toString().trim() : "";
+                if (!uid.isEmpty()) {
+                    req.setUnitId(uid);
+                }
+            } else {
+                req.setRequestType(SupplyRequest.TYPE_CONSUME);
+            }
+            SupplyLab.get(requireContext()).submitSupplyRequestAsync(req, ok -> {
+                Activity act = getActivity();
+                if (act == null) {
+                    return;
+                }
+                act.runOnUiThread(() -> {
+                    if (ok) {
+                        Toast.makeText(act, "Request submitted (pending approval)", Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                    } else {
+                        Toast.makeText(act, "Could not submit (check item type and stock)", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            });
+        }));
+        dialog.show();
     }
 
     private void showBorrowDialog() {

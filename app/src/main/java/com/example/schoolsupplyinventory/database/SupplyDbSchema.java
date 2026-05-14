@@ -70,10 +70,15 @@ public class SupplyDbSchema {
         public static final class Cols {
             public static final String UUID = "uuid";
             public static final String ITEM_ID = "item_id";
+            public static final String ITEM_TITLE = "item_title";
             public static final String REQUESTER_NAME = "requester_name";
             public static final String QUANTITY = "quantity";
             public static final String DATE_REQUESTED = "date_requested";
             public static final String STATUS = "status";
+            public static final String REQUEST_TYPE = "request_type";
+            public static final String PURPOSE = "purpose";
+            public static final String EXPECTED_RETURN_DATE = "expected_return_date";
+            public static final String UNIT_ID = "unit_id";
         }
     }
 
