@@ -51,15 +51,17 @@ public class OverdueCheckWorker extends Worker {
                 "There are " + overdueRecords.size() + " items past their return date!");
         }
 
-        // 2. Check for Low Stock
+        // 2. Check for Low Stock - Restricted to Consumables only
         List<SupplyItem> items = lab.getItems();
         List<SupplyItem> lowStockItems = items.stream()
-                .filter(item -> item.getQuantity() > 0 && item.getQuantity() <= 5)
+                .filter(item -> SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType()) 
+                        && item.getAvailableQuantity() > 0 
+                        && item.getAvailableQuantity() <= 5)
                 .collect(Collectors.toList());
         
         if (!lowStockItems.isEmpty()) {
             sendNotification(NOTIFY_LOW_STOCK, "Low Stock Warning", 
-                lowStockItems.size() + " items are running low on stock.");
+                lowStockItems.size() + " consumable items are running low on stock.");
         }
 
         // 3. Check for Expiring Items (within next 30 days)

@@ -43,6 +43,7 @@ public class ReportsFragment extends Fragment {
     private BarChart mBorrowBarChart;
     private HorizontalBarChart mTopItemsChart;
     private ChipGroup mFilterChipGroup;
+    private View mLoadingOverlay;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
@@ -54,6 +55,7 @@ public class ReportsFragment extends Fragment {
         mRoomUsagePieChart = v.findViewById(R.id.room_usage_chart);
         mBorrowBarChart = v.findViewById(R.id.borrow_bar_chart);
         mTopItemsChart = v.findViewById(R.id.top_items_chart);
+        mLoadingOverlay = v.findViewById(R.id.loading_overlay);
         
         mFilterChipGroup = v.findViewById(R.id.report_filter_chip_group);
         mFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> updateAllCharts());
@@ -62,17 +64,30 @@ public class ReportsFragment extends Fragment {
 
         v.findViewById(R.id.btn_export_pdf).setOnClickListener(view -> exportToPDF());
         v.findViewById(R.id.btn_export_csv).setOnClickListener(view -> exportToCSV());
-        v.findViewById(R.id.btn_export_excel).setOnClickListener(view -> exportToCSV());
 
         return v;
     }
 
     private void updateAllCharts() {
-        setupClassificationChart();
-        setupStockChart();
-        setupRoomUsageChart();
-        setupBorrowChart();
-        setupTopItemsChart();
+        if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.VISIBLE);
+        
+        SupplyLab lab = SupplyLab.get(getActivity());
+        lab.getItemsAsync(items -> {
+            lab.getAllBorrowRecordsAsync(borrows -> {
+                lab.getTopBorrowedItemsAsync(10, topItems -> {
+                    if (!isAdded()) return;
+                    if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.GONE);
+                    
+                    List<SupplyItem> filteredItems = filterItemsByType(items);
+                    
+                    renderClassificationChart(items);
+                    renderStockChart(filteredItems);
+                    renderRoomUsageChart(filteredItems);
+                    renderBorrowChart(filteredItems, borrows);
+                    renderTopItemsChart(filteredItems, topItems);
+                });
+            });
+        });
     }
 
     private List<SupplyItem> filterItemsByType(List<SupplyItem> items) {
@@ -85,66 +100,127 @@ public class ReportsFragment extends Fragment {
         return items;
     }
 
-    private void setupClassificationChart() {
-        SupplyLab.get(getActivity()).getItemsAsync(items -> {
-            if (items == null || items.isEmpty() || !isAdded()) return;
+    private void renderClassificationChart(List<SupplyItem> items) {
+        long consumable = items.stream().filter(i -> SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(i.getItemType())).count();
+        long borrowable = items.stream().filter(i -> SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(i.getItemType())).count();
 
-            long consumable = items.stream().filter(i -> SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(i.getItemType())).count();
-            long borrowable = items.stream().filter(i -> SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(i.getItemType())).count();
+        List<PieEntry> entries = new ArrayList<>();
+        if (consumable > 0) entries.add(new PieEntry(consumable, "Consumable"));
+        if (borrowable > 0) entries.add(new PieEntry(borrowable, "Borrowable"));
 
-            List<PieEntry> entries = new ArrayList<>();
-            if (consumable > 0) entries.add(new PieEntry(consumable, "Consumable"));
-            if (borrowable > 0) entries.add(new PieEntry(borrowable, "Borrowable"));
-
-            updatePieChart(mTypePieChart, entries, "Item Types");
-        });
+        updatePieChart(mTypePieChart, entries, "Item Types");
     }
 
-    private void setupStockChart() {
-        SupplyLab.get(getActivity()).getItemsAsync(items -> {
-            if (items == null || items.isEmpty() || !isAdded()) return;
-            
-            List<SupplyItem> filteredItems = filterItemsByType(items);
-            Map<String, Integer> categoryCount = new HashMap<>();
-            for (SupplyItem item : filteredItems) {
-                String cat = item.getCategory() != null ? item.getCategory() : "Other";
-                categoryCount.put(cat, categoryCount.getOrDefault(cat, 0) + item.getAvailableQuantity());
-            }
+    private void renderStockChart(List<SupplyItem> items) {
+        Map<String, Integer> categoryCount = new HashMap<>();
+        for (SupplyItem item : items) {
+            String cat = (item.getCategory() != null && !item.getCategory().isEmpty()) ? item.getCategory() : "Other";
+            categoryCount.put(cat, categoryCount.getOrDefault(cat, 0) + item.getAvailableQuantity());
+        }
 
-            List<PieEntry> entries = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : categoryCount.entrySet()) {
-                entries.add(new PieEntry(entry.getValue(), entry.getKey()));
-            }
+        List<PieEntry> entries = new ArrayList<>();
+        categoryCount.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(8)
+                .forEach(e -> entries.add(new PieEntry(e.getValue(), e.getKey())));
 
-            updatePieChart(mStockPieChart, entries, "Category Stock");
-        });
+        updatePieChart(mStockPieChart, entries, "Category Stock");
     }
 
-    private void setupRoomUsageChart() {
-        SupplyLab.get(getActivity()).getItemsAsync(items -> {
-            if (items == null || items.isEmpty() || !isAdded()) return;
-            
-            List<SupplyItem> filteredItems = filterItemsByType(items);
-            Map<String, Integer> roomUsage = new HashMap<>();
-            for (SupplyItem item : filteredItems) {
-                String room = item.getRoom() != null ? item.getRoom() : "General";
-                int used = item.getTotalQuantity() - item.getAvailableQuantity();
-                roomUsage.put(room, roomUsage.getOrDefault(room, 0) + used);
+    private void renderRoomUsageChart(List<SupplyItem> items) {
+        Map<String, Integer> roomUsage = new HashMap<>();
+        for (SupplyItem item : items) {
+            String room = (item.getRoom() != null && !item.getRoom().isEmpty()) ? item.getRoom() : "General";
+            int issued = item.getTotalQuantity() - item.getAvailableQuantity();
+            if (issued > 0) {
+                roomUsage.put(room, roomUsage.getOrDefault(room, 0) + issued);
             }
+        }
 
-            List<PieEntry> entries = new ArrayList<>();
-            for (Map.Entry<String, Integer> entry : roomUsage.entrySet()) {
-                entries.add(new PieEntry(entry.getValue(), entry.getKey()));
+        List<PieEntry> entries = new ArrayList<>();
+        roomUsage.entrySet().stream()
+                .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
+                .limit(8)
+                .forEach(e -> entries.add(new PieEntry(e.getValue(), e.getKey())));
+
+        updatePieChart(mRoomUsagePieChart, entries, "Issued by Room");
+    }
+
+    private void renderBorrowChart(List<SupplyItem> items, List<BorrowRecord> borrows) {
+        List<String> itemIds = items.stream().map(i -> i.getId().toString()).collect(Collectors.toList());
+        List<BorrowRecord> filteredRecords = borrows.stream()
+                .filter(r -> itemIds.contains(r.getItemId().toString()))
+                .collect(Collectors.toList());
+
+        final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        int[] monthlyTotals = new int[12];
+        
+        Calendar cal = Calendar.getInstance();
+        for (BorrowRecord record : filteredRecords) {
+            if (record.getDateBorrowed() != null) {
+                cal.setTime(record.getDateBorrowed());
+                int month = cal.get(Calendar.MONTH);
+                monthlyTotals[month] += record.getInitialQuantity();
             }
+        }
 
-            updatePieChart(mRoomUsagePieChart, entries, "Room Usage");
-        });
+        List<BarEntry> entries = new ArrayList<>();
+        for (int i = 0; i < 12; i++) {
+            entries.add(new BarEntry(i, monthlyTotals[i]));
+        }
+
+        BarDataSet dataSet = new BarDataSet(entries, "Monthly Issuance");
+        dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.primary_purple));
+        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+
+        BarData data = new BarData(dataSet);
+        mBorrowBarChart.setData(data);
+        mBorrowBarChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(months));
+        mBorrowBarChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+        mBorrowBarChart.getXAxis().setGranularity(1f);
+        mBorrowBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+        mBorrowBarChart.getAxisRight().setEnabled(false);
+        mBorrowBarChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+        mBorrowBarChart.getDescription().setEnabled(false);
+        mBorrowBarChart.animateY(1000);
+        mBorrowBarChart.invalidate();
+    }
+
+    private void renderTopItemsChart(List<SupplyItem> items, List<Map.Entry<String, Integer>> topItems) {
+        List<String> itemNames = items.stream().map(SupplyItem::getName).collect(Collectors.toList());
+        List<Map.Entry<String, Integer>> filteredTop = topItems.stream()
+                .filter(e -> itemNames.contains(e.getKey()))
+                .limit(5)
+                .collect(Collectors.toList());
+
+        List<BarEntry> entries = new ArrayList<>();
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < filteredTop.size(); i++) {
+            entries.add(new BarEntry(i, filteredTop.get(i).getValue()));
+            labels.add(filteredTop.get(i).getKey());
+        }
+
+        BarDataSet dataSet = new BarDataSet(entries, "Most Active Items");
+        dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.secondary_purple));
+        dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+
+        BarData data = new BarData(dataSet);
+        mTopItemsChart.setData(data);
+        mTopItemsChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
+        mTopItemsChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+        mTopItemsChart.getXAxis().setGranularity(1f);
+        mTopItemsChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
+        mTopItemsChart.getAxisRight().setEnabled(false);
+        mTopItemsChart.getLegend().setEnabled(false);
+        mTopItemsChart.getDescription().setEnabled(false);
+        mTopItemsChart.animateX(1000);
+        mTopItemsChart.invalidate();
     }
 
     private void updatePieChart(PieChart chart, List<PieEntry> entries, String label) {
         if (entries.isEmpty()) {
             chart.clear();
-            chart.setNoDataText("No data available for this filter");
+            chart.setNoDataText("No data available");
             chart.invalidate();
             return;
         }
@@ -166,98 +242,6 @@ public class ReportsFragment extends Fragment {
         chart.invalidate();
     }
 
-    private void setupBorrowChart() {
-        SupplyLab lab = SupplyLab.get(getActivity());
-        lab.getItemsAsync(items -> {
-            if (items == null || !isAdded()) return;
-            
-            List<SupplyItem> filteredItems = filterItemsByType(items);
-            List<String> filteredIds = filteredItems.stream().map(i -> i.getId().toString()).collect(Collectors.toList());
-
-            lab.getAllBorrowRecordsAsync(records -> {
-                if (records == null || !isAdded()) return;
-
-                List<BorrowRecord> filteredRecords = records.stream()
-                        .filter(r -> filteredIds.contains(r.getItemId().toString()))
-                        .collect(Collectors.toList());
-
-                final String[] months = new String[]{"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-                int[] monthlyTotals = new int[12];
-                
-                Calendar cal = Calendar.getInstance();
-                for (BorrowRecord record : filteredRecords) {
-                    if (record.getDateBorrowed() != null) {
-                        cal.setTime(record.getDateBorrowed());
-                        int month = cal.get(Calendar.MONTH);
-                        monthlyTotals[month] += record.getInitialQuantity();
-                    }
-                }
-
-                List<BarEntry> entries = new ArrayList<>();
-                for (int i = 0; i < 12; i++) {
-                    entries.add(new BarEntry(i, monthlyTotals[i]));
-                }
-
-                BarDataSet dataSet = new BarDataSet(entries, "Monthly Issuance");
-                dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.primary_purple));
-                dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-
-                BarData data = new BarData(dataSet);
-                mBorrowBarChart.setData(data);
-                mBorrowBarChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(months));
-                mBorrowBarChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-                mBorrowBarChart.getXAxis().setGranularity(1f);
-                mBorrowBarChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-                mBorrowBarChart.getAxisRight().setEnabled(false);
-                mBorrowBarChart.getLegend().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-                mBorrowBarChart.getDescription().setEnabled(false);
-                mBorrowBarChart.animateY(1000);
-                mBorrowBarChart.invalidate();
-            });
-        });
-    }
-
-    private void setupTopItemsChart() {
-        SupplyLab lab = SupplyLab.get(getActivity());
-        lab.getItemsAsync(items -> {
-            if (items == null || items.isEmpty() || !isAdded()) return;
-            
-            List<SupplyItem> filteredItems = filterItemsByType(items);
-            List<String> filteredNames = filteredItems.stream().map(SupplyItem::getName).collect(Collectors.toList());
-
-            lab.getTopBorrowedItemsAsync(5, topItems -> {
-                if (topItems == null || !isAdded()) return;
-
-                List<Map.Entry<String, Integer>> filteredTop = topItems.stream()
-                        .filter(e -> filteredNames.contains(e.getKey()))
-                        .collect(Collectors.toList());
-
-                List<BarEntry> entries = new ArrayList<>();
-                List<String> labels = new ArrayList<>();
-                for (int i = 0; i < filteredTop.size(); i++) {
-                    entries.add(new BarEntry(i, filteredTop.get(i).getValue()));
-                    labels.add(filteredTop.get(i).getKey());
-                }
-
-                BarDataSet dataSet = new BarDataSet(entries, "Most Active Items");
-                dataSet.setColor(ContextCompat.getColor(requireContext(), R.color.secondary_purple));
-                dataSet.setValueTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-
-                BarData data = new BarData(dataSet);
-                mTopItemsChart.setData(data);
-                mTopItemsChart.getXAxis().setValueFormatter(new IndexAxisValueFormatter(labels));
-                mTopItemsChart.getXAxis().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-                mTopItemsChart.getXAxis().setGranularity(1f);
-                mTopItemsChart.getAxisLeft().setTextColor(ContextCompat.getColor(requireContext(), R.color.text_primary));
-                mTopItemsChart.getAxisRight().setEnabled(false);
-                mTopItemsChart.getLegend().setEnabled(false);
-                mTopItemsChart.getDescription().setEnabled(false);
-                mTopItemsChart.animateX(1000);
-                mTopItemsChart.invalidate();
-            });
-        });
-    }
-
     private int[] getChartColors() {
         return new int[]{
                 ContextCompat.getColor(requireContext(), R.color.primary_purple),
@@ -270,10 +254,12 @@ public class ReportsFragment extends Fragment {
     }
 
     private void exportToCSV() {
+        if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.VISIBLE);
         SupplyLab lab = SupplyLab.get(getActivity());
         lab.getItemsAsync(items -> {
             lab.getAllBorrowRecordsAsync(borrows -> {
-                StringBuilder csvInventory = new StringBuilder("Item ID,Item Name,Category,Item Type,Total Stock,Available,Borrowed,Used,Unit,Description,Condition,Status,Date Added\n");
+                if (!isAdded()) return;
+                StringBuilder csvInventory = new StringBuilder("Item ID,Item Name,Category,Item Type,Total Stock,Available,Borrowed,Used,Unit,Status,Date Added\n");
                 SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                 for (SupplyItem item : items) {
                     csvInventory.append(item.getBarcode() != null ? item.getBarcode() : item.getId()).append(",")
@@ -285,26 +271,25 @@ public class ReportsFragment extends Fragment {
                        .append(item.getBorrowedQuantity()).append(",")
                        .append(item.getUsedQuantity()).append(",")
                        .append(escapeCsv(item.getUnit())).append(",")
-                       .append(escapeCsv(item.getDescription())).append(",")
-                       .append(item.getCondition()).append(",")
                        .append(item.getStatus()).append(",")
                        .append(sdf.format(item.getDateAdded())).append("\n");
                 }
-                saveFile("School_Inventory_Data.csv", csvInventory.toString().getBytes());
+                saveFile("Inventory_Export.csv", csvInventory.toString().getBytes());
 
-                StringBuilder csvBorrows = new StringBuilder("Item ID,Borrower,Quantity,Date Borrowed,Actual Return,Status\n");
-                SimpleDateFormat fullSdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+                StringBuilder csvBorrows = new StringBuilder("Item,Borrower,Quantity,Date Borrowed,Return Date,Status\n");
                 for (BorrowRecord record : borrows) {
-                    csvBorrows.append(record.getItemId()).append(",")
+                    SupplyItem item = items.stream().filter(i -> i.getId().equals(record.getItemId())).findFirst().orElse(null);
+                    csvBorrows.append(escapeCsv(item != null ? item.getName() : "Unknown")).append(",")
                             .append(escapeCsv(record.getBorrowerName())).append(",")
                             .append(record.getQuantity()).append(",")
-                            .append(fullSdf.format(record.getDateBorrowed())).append(",")
-                            .append(record.getActualReturnDate() != null ? fullSdf.format(record.getActualReturnDate()) : "N/A").append(",")
+                            .append(sdf.format(record.getDateBorrowed())).append(",")
+                            .append(record.getActualReturnDate() != null ? sdf.format(record.getActualReturnDate()) : "N/A").append(",")
                             .append(record.getStatus()).append("\n");
                 }
-                saveFile("Borrowing_Logs_Detailed.csv", csvBorrows.toString().getBytes());
+                saveFile("Borrowing_Logs.csv", csvBorrows.toString().getBytes());
                 
-                Toast.makeText(getActivity(), "Reports exported to application storage", Toast.LENGTH_LONG).show();
+                if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.GONE);
+                Toast.makeText(getActivity(), "Reports exported to Documents", Toast.LENGTH_LONG).show();
             });
         });
     }
@@ -318,51 +303,73 @@ public class ReportsFragment extends Fragment {
     }
 
     private void exportToPDF() {
-        PdfDocument document = new PdfDocument();
-        PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, 1).create();
-        PdfDocument.Page page = document.startPage(pageInfo);
-        
-        android.graphics.Canvas canvas = page.getCanvas();
-        Paint paint = new Paint();
-        paint.setTextSize(20f);
-        paint.setFakeBoldText(true);
-        
-        canvas.drawText("School Supply Inventory System Report", 50, 50, paint);
-        paint.setTextSize(12f);
-        paint.setFakeBoldText(false);
-        canvas.drawText("Generated on: " + new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(new Date()), 50, 80, paint);
-        
+        if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.VISIBLE);
         SupplyLab.get(getActivity()).getItemsAsync(items -> {
-            int y = 120;
-            paint.setFakeBoldText(true);
-            canvas.drawText("MASTER INVENTORY SUMMARY", 50, y, paint);
-            y += 25;
-            paint.setFakeBoldText(false);
-            canvas.drawText("Name | Category | Type | Total | Available | Status", 50, y, paint);
-            y += 10;
-            canvas.drawLine(50, y, 545, y, paint);
-            y += 20;
+            if (!isAdded()) return;
+            PdfDocument document = new PdfDocument();
+            int pageNumber = 1;
+            int yPos = 100;
+            int itemsPerPage = 35;
             
-            for (int i = 0; i < Math.min(items.size(), 30); i++) {
+            Paint paint = new Paint();
+            paint.setTextSize(12f);
+            
+            PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(595, 842, pageNumber).create();
+            PdfDocument.Page page = document.startPage(pageInfo);
+            android.graphics.Canvas canvas = page.getCanvas();
+            
+            // Header
+            Paint headerPaint = new Paint();
+            headerPaint.setTextSize(18f);
+            headerPaint.setFakeBoldText(true);
+            canvas.drawText("School Supply Inventory Report", 50, 50, headerPaint);
+            canvas.drawText("Generated: " + new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date()), 50, 75, paint);
+            
+            // Table Header
+            paint.setFakeBoldText(true);
+            canvas.drawText("Item Name", 50, yPos, paint);
+            canvas.drawText("Category", 200, yPos, paint);
+            canvas.drawText("Stock", 350, yPos, paint);
+            canvas.drawText("Status", 450, yPos, paint);
+            yPos += 20;
+            canvas.drawLine(50, yPos - 10, 545, yPos - 10, paint);
+            paint.setFakeBoldText(false);
+
+            for (int i = 0; i < items.size(); i++) {
+                if (i > 0 && i % itemsPerPage == 0) {
+                    document.finishPage(page);
+                    pageNumber++;
+                    pageInfo = new PdfDocument.PageInfo.Builder(595, 842, pageNumber).create();
+                    page = document.startPage(pageInfo);
+                    canvas = page.getCanvas();
+                    yPos = 50;
+                }
+                
                 SupplyItem item = items.get(i);
-                String line = String.format(Locale.getDefault(), "%s | %s | %s | %d | %d | %s", 
-                        item.getName(), item.getCategory(), item.getItemType(), item.getTotalQuantity(), item.getAvailableQuantity(), item.getStatus());
-                canvas.drawText(line, 50, y, paint);
-                y += 20;
-                if (y > 800) break;
+                canvas.drawText(truncate(item.getName(), 25), 50, yPos, paint);
+                canvas.drawText(truncate(item.getCategory(), 20), 200, yPos, paint);
+                canvas.drawText(item.getAvailableQuantity() + "/" + item.getTotalQuantity(), 350, yPos, paint);
+                canvas.drawText(item.getStatus(), 450, yPos, paint);
+                yPos += 20;
             }
             
             document.finishPage(page);
             
-            File file = new File(requireContext().getExternalFilesDir(null), "Comprehensive_Inventory_Report.pdf");
+            File file = new File(requireContext().getExternalFilesDir(null), "Inventory_Report.pdf");
             try {
                 document.writeTo(new FileOutputStream(file));
-                Toast.makeText(getActivity(), "PDF Saved: " + file.getName(), Toast.LENGTH_LONG).show();
+                Toast.makeText(getActivity(), "PDF Saved: " + file.getAbsolutePath(), Toast.LENGTH_LONG).show();
             } catch (IOException e) {
-                Toast.makeText(getActivity(), "PDF Export failed", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Export failed", Toast.LENGTH_SHORT).show();
             }
             document.close();
+            if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.GONE);
         });
+    }
+
+    private String truncate(String text, int length) {
+        if (text == null) return "";
+        return text.length() <= length ? text : text.substring(0, length - 3) + "...";
     }
 
     private void saveFile(String filename, byte[] data) {

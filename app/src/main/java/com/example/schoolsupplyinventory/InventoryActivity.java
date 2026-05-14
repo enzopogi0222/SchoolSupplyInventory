@@ -1,6 +1,9 @@
 package com.example.schoolsupplyinventory;
 
+import android.content.Context;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -16,6 +19,19 @@ public class InventoryActivity extends AppCompatActivity {
         setContentView(R.layout.activity_inventory);
 
         BottomNavigationView bottomNav = findViewById(R.id.bottom_navigation);
+        
+        // Retrieve role
+        String role = getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN");
+        boolean isAdmin = "ADMIN".equals(role);
+
+        // Hide Reports tab if not admin
+        if (!isAdmin) {
+            Menu menu = bottomNav.getMenu();
+            MenuItem reportsItem = menu.findItem(R.id.nav_reports);
+            if (reportsItem != null) {
+                reportsItem.setVisible(false);
+            }
+        }
         
         if (savedInstanceState == null) {
             loadFragment(new DashboardFragment());

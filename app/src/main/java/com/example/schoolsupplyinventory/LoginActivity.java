@@ -23,15 +23,13 @@ public class LoginActivity extends AppCompatActivity {
         mLoginButton = findViewById(R.id.btn_login);
 
         mLoginButton.setOnClickListener(v -> {
-            String email = mEmailField.getText().toString();
-            String password = mPasswordField.getText().toString();
+            String email = mEmailField.getText().toString().trim();
+            String password = mPasswordField.getText().toString().trim();
 
-            // Mock authentication
             if (email.equals("admin@supplyflow.com") && password.equals("password")) {
-                SupplyLab.get(this).setCurrentUser(email);
-                Intent intent = new Intent(LoginActivity.this, InventoryActivity.class);
-                startActivity(intent);
-                finish();
+                loginAs(email, "ADMIN");
+            } else if (email.equals("staff@supplyflow.com") && password.equals("password123")) {
+                loginAs(email, "STAFF");
             } else if (email.isEmpty() || password.isEmpty()) {
                 Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show();
             } else {
@@ -42,5 +40,18 @@ public class LoginActivity extends AppCompatActivity {
         findViewById(R.id.btn_signup).setOnClickListener(v -> {
             Toast.makeText(this, "Registration coming soon", Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void loginAs(String email, String role) {
+        SupplyLab lab = SupplyLab.get(this);
+        lab.setCurrentUser(email);
+        // We store the role in the lab for easy access across fragments
+        getSharedPreferences("SupplyFlow", MODE_PRIVATE).edit()
+                .putString("USER_ROLE", role)
+                .apply();
+                
+        Intent intent = new Intent(LoginActivity.this, InventoryActivity.class);
+        startActivity(intent);
+        finish();
     }
 }

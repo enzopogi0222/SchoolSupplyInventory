@@ -1,6 +1,9 @@
 package com.example.schoolsupplyinventory;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.UUID;
 
 public class SupplyItem {
@@ -21,6 +24,7 @@ public class SupplyItem {
     private String mCondition; // New, Good, Damaged, Old
     private String mStatus; // Available, Borrowed, Used, Out of Stock
     private Date mDateAdded;
+    private String mUnitIdentifiers; // Comma-separated unique IDs for each piece
     
     // Additional fields from previous versions that might still be useful
     private String mBrand;
@@ -48,6 +52,7 @@ public class SupplyItem {
         mCondition = "New";
         mStatus = "Available";
         mDescription = "";
+        mUnitIdentifiers = "";
     }
 
     public UUID getId() {
@@ -150,6 +155,21 @@ public class SupplyItem {
         mDateAdded = dateAdded;
     }
 
+    public String getUnitIdentifiers() {
+        return mUnitIdentifiers;
+    }
+
+    public void setUnitIdentifiers(String unitIdentifiers) {
+        mUnitIdentifiers = unitIdentifiers;
+    }
+
+    public List<String> getUnitIdentifiersList() {
+        if (mUnitIdentifiers == null || mUnitIdentifiers.isEmpty()) {
+            return new ArrayList<>();
+        }
+        return new ArrayList<>(Arrays.asList(mUnitIdentifiers.split("\\s*,\\s*")));
+    }
+
     // Legacy/Compatibility Getters and Setters
     public int getQuantity() {
         return mAvailableQuantity;
@@ -163,7 +183,7 @@ public class SupplyItem {
     public void setPropertyTag(String propertyTag) { mPropertyTag = propertyTag; }
     public String getRoom() { return mRoom; }
     public void setRoom(String room) { mRoom = room; }
-    public String getLocation() { return mLocation; }
+    public String mLocation() { return mLocation; }
     public void setLocation(String location) { mLocation = location; }
     public String getSupplier() { return mSupplier; }
     public void setSupplier(String supplier) { mSupplier = supplier; }

@@ -2,6 +2,7 @@ package com.example.schoolsupplyinventory;
 
 import android.Manifest;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -33,9 +34,9 @@ import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -51,16 +52,20 @@ public class SupplyDetailFragment extends Fragment {
     private static final String SAVED_ITEM_ID = "saved_item_id";
     private static final int REQUEST_PHOTO = 3;
     private static final int REQUEST_CAMERA_PERMISSION = 4;
+    private static final int REQUEST_BARCODE_SCAN = 5;
     private static final String ADD_NEW_OPTION = "+ ADD NEW";
 
     private SupplyItem mItem;
     private File mPhotoFile;
     private boolean mIsNewItem = false;
+    private boolean mIsAdmin = true;
     
+    private TextInputLayout mBarcodeLayout;
     private TextInputEditText mTitleField;
     private TextInputEditText mQuantityField;
     private TextInputEditText mBarcodeField;
     private TextInputEditText mDescriptionField;
+    private TextInputEditText mUnitIdentifiersField;
     private MaterialAutoCompleteTextView mUnitDropdown;
     private MaterialAutoCompleteTextView mCategoryDropdown;
     private MaterialAutoCompleteTextView mTypeDropdown;
@@ -71,6 +76,7 @@ public class SupplyDetailFragment extends Fragment {
     private FloatingActionButton mPhotoButton;
     private ExtendedFloatingActionButton mSaveFab;
     private ImageView mPhotoView;
+    private View mLoadingOverlay;
     
     private TextView mAvailableStockText, mBorrowedStockText, mUsedStockText;
 
@@ -90,6 +96,8 @@ public class SupplyDetailFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         
+        mIsAdmin = "ADMIN".equals(getActivity().getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN"));
+        
         UUID itemId = null;
         if (savedInstanceState != null && savedInstanceState.containsKey(SAVED_ITEM_ID)) {
             itemId = (UUID) savedInstanceState.getSerializable(SAVED_ITEM_ID);
@@ -98,21 +106,29 @@ public class SupplyDetailFragment extends Fragment {
         }
 
         if (itemId != null) {
-            mItem = SupplyLab.get(getActivity()).getItem(itemId);
-            if (mItem == null) {
-                mItem = new SupplyItem(itemId);
-                mIsNewItem = true;
-            } else {
-                mIsNewItem = false;
-            }
+            mItem = new SupplyItem(itemId);
+            loadItemAsync(itemId);
         } else {
             mItem = new SupplyItem();
             mIsNewItem = true;
-        }
-        
-        if (mItem != null) {
             mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
         }
+    }
+
+    private void loadItemAsync(UUID itemId) {
+        SupplyLab.get(getActivity()).getItemAsync(itemId, item -> {
+            if (item != null) {
+                mItem = item;
+                mIsNewItem = false;
+                mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
+                if (getView() != null) {
+                    updateFields();
+                }
+            } else {
+                mIsNewItem = true;
+                mPhotoFile = SupplyLab.get(getActivity()).getPhotoFile(mItem);
+            }
+        });
     }
 
     @Override
@@ -126,87 +142,98 @@ public class SupplyDetailFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        if (mItem == null) {
-            Toast.makeText(getActivity(), "Item not found", Toast.LENGTH_SHORT).show();
-            getActivity().finish();
-            return new View(getActivity());
-        }
-
         View v = inflater.inflate(R.layout.fragment_supply_detail, container, false);
+
+        mLoadingOverlay = v.findViewById(R.id.loading_overlay);
+        
+        mBarcodeLayout = v.findViewById(R.id.supply_barcode_layout);
+        mBarcodeField = v.findViewById(R.id.supply_barcode);
+        mTitleField = v.findViewById(R.id.supply_title);
+        mCategoryDropdown = v.findViewById(R.id.supply_category);
+        mTypeDropdown = v.findViewById(R.id.supply_type);
+        mQuantityField = v.findViewById(R.id.supply_quantity);
+        mUnitDropdown = v.findViewById(R.id.supply_unit);
+        mUnitIdentifiersField = v.findViewById(R.id.supply_unit_identifiers);
+        mDescriptionField = v.findViewById(R.id.supply_description);
+        mConditionDropdown = v.findViewById(R.id.supply_condition);
+        mStatusDropdown = v.findViewById(R.id.supply_status);
+        mAvailableStockText = v.findViewById(R.id.available_stock_display);
+        mBorrowedStockText = v.findViewById(R.id.borrowed_stock_display);
+        mUsedStockText = v.findViewById(R.id.used_stock_display);
+        mRoomDropdown = v.findViewById(R.id.supply_room);
+        mDateButton = v.findViewById(R.id.supply_date);
+        mPhotoButton = v.findViewById(R.id.supply_camera);
+        mPhotoView = v.findViewById(R.id.supply_photo);
+        mSaveFab = v.findViewById(R.id.save_supply_fab);
+
+        setupListeners();
+        updateFields();
+
+        if (!mIsAdmin) {
+            mSaveFab.setVisibility(View.GONE);
+            mPhotoButton.setVisibility(View.GONE);
+            mBarcodeLayout.setEndIconVisible(false);
+            // Disable editing for staff
+            mTitleField.setEnabled(false);
+            mBarcodeField.setEnabled(false);
+            mQuantityField.setEnabled(false);
+            mCategoryDropdown.setEnabled(false);
+            mTypeDropdown.setEnabled(false);
+            mUnitDropdown.setEnabled(false);
+            mConditionDropdown.setEnabled(false);
+            mStatusDropdown.setEnabled(false);
+            mRoomDropdown.setEnabled(false);
+            mDescriptionField.setEnabled(false);
+            mUnitIdentifiersField.setEnabled(false);
+            mDateButton.setEnabled(false);
+        }
 
         View rootLayout = v.findViewById(R.id.supply_detail_root);
         if (rootLayout != null) {
             rootLayout.startAnimation(AnimationUtils.loadAnimation(getContext(), android.R.anim.fade_in));
         }
 
-        // --- General Information ---
-        mBarcodeField = v.findViewById(R.id.supply_barcode);
-        mBarcodeField.setText(mItem.getBarcode());
-        mBarcodeField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBarcode(s)));
+        return v;
+    }
 
-        mTitleField = v.findViewById(R.id.supply_title);
-        mTitleField.setText(mItem.getName());
+    private void setupListeners() {
+        mBarcodeField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBarcode(s)));
+        
+        mBarcodeLayout.setEndIconOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), ScannerActivity.class);
+            startActivityForResult(intent, REQUEST_BARCODE_SCAN);
+        });
+
         mTitleField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setName(s)));
 
-        mCategoryDropdown = v.findViewById(R.id.supply_category);
-        updateCategoryList();
-
-        mTypeDropdown = v.findViewById(R.id.supply_type);
         setupStaticDropdown(mTypeDropdown, new String[]{SupplyItem.TYPE_CONSUMABLE, SupplyItem.TYPE_BORROWABLE}, mItem.getItemType(), s -> mItem.setItemType(s));
 
-        mQuantityField = v.findViewById(R.id.supply_quantity);
-        mQuantityField.setText(String.valueOf(mItem.getTotalQuantity()));
         mQuantityField.addTextChangedListener(createSimpleTextWatcher(s -> {
             try { 
                 int val = Integer.parseInt(s);
                 if (mIsNewItem) {
                     mItem.setTotalQuantity(val);
                     mItem.setAvailableQuantity(val);
-                    updateStockDisplays();
                 } else {
-                    // Update total stock, adjust available if needed
                     int diff = val - mItem.getTotalQuantity();
                     mItem.setTotalQuantity(val);
                     mItem.setAvailableQuantity(Math.max(0, mItem.getAvailableQuantity() + diff));
-                    updateStockDisplays();
                 }
+                updateStockDisplays();
             } catch (Exception e) { }
         }));
 
-        mUnitDropdown = v.findViewById(R.id.supply_unit);
-        updateUnitList();
-
-        mDescriptionField = v.findViewById(R.id.supply_description);
-        mDescriptionField.setText(mItem.getDescription());
+        mUnitIdentifiersField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setUnitIdentifiers(s)));
         mDescriptionField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setDescription(s)));
 
-        // --- Condition & Status ---
-        mConditionDropdown = v.findViewById(R.id.supply_condition);
         setupStaticDropdown(mConditionDropdown, new String[]{"New", "Good", "Damaged", "Old"}, mItem.getCondition(), s -> mItem.setCondition(s));
-
-        mStatusDropdown = v.findViewById(R.id.supply_status);
         setupStaticDropdown(mStatusDropdown, new String[]{"Available", "Borrowed", "Used", "Out of Stock"}, mItem.getStatus(), s -> mItem.setStatus(s));
 
-        // --- Inventory Details ---
-        mAvailableStockText = v.findViewById(R.id.available_stock_display);
-        mBorrowedStockText = v.findViewById(R.id.borrowed_stock_display);
-        mUsedStockText = v.findViewById(R.id.used_stock_display);
-        updateStockDisplays();
-
-        mRoomDropdown = v.findViewById(R.id.supply_room);
-        updateRoomList();
-
-        // --- Dates ---
-        mDateButton = v.findViewById(R.id.supply_date);
-        updateDateButton();
         mDateButton.setOnClickListener(view -> showDatePicker("Date Added", mItem.getDateAdded(), date -> {
             mItem.setDateAdded(date);
             updateDateButton();
         }));
 
-        // --- Media ---
-        mPhotoButton = v.findViewById(R.id.supply_camera);
-        mPhotoView = v.findViewById(R.id.supply_photo);
         mPhotoButton.setOnClickListener(v1 -> {
             if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -215,12 +242,29 @@ public class SupplyDetailFragment extends Fragment {
                 launchCamera();
             }
         });
-        updatePhotoView();
 
-        mSaveFab = v.findViewById(R.id.save_supply_fab);
         mSaveFab.setOnClickListener(view -> saveItem());
+    }
 
-        return v;
+    private void updateFields() {
+        if (mItem == null) return;
+        
+        mBarcodeField.setText(mItem.getBarcode());
+        mTitleField.setText(mItem.getName());
+        mQuantityField.setText(String.valueOf(mItem.getTotalQuantity()));
+        mUnitIdentifiersField.setText(mItem.getUnitIdentifiers());
+        mDescriptionField.setText(mItem.getDescription());
+        
+        mTypeDropdown.setText(mItem.getItemType(), false);
+        mConditionDropdown.setText(mItem.getCondition(), false);
+        mStatusDropdown.setText(mItem.getStatus(), false);
+        
+        updateCategoryList();
+        updateUnitList();
+        updateRoomList();
+        updateStockDisplays();
+        updateDateButton();
+        updatePhotoView();
     }
 
     private void updateStockDisplays() {
@@ -284,7 +328,7 @@ public class SupplyDetailFragment extends Fragment {
         SupplyLab.get(getActivity()).getCategoriesAsync(categories -> {
             if (!isAdded()) return;
             List<String> list = new ArrayList<>(categories);
-            list.add(ADD_NEW_OPTION);
+            if (mIsAdmin) list.add(ADD_NEW_OPTION);
             ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_dropdown_item_1line, list);
             mCategoryDropdown.setAdapter(adapter);
             mCategoryDropdown.setText(mItem.getCategory(), false);
@@ -305,7 +349,7 @@ public class SupplyDetailFragment extends Fragment {
         SupplyLab.get(getActivity()).getUnitsAsync(units -> {
             if (!isAdded()) return;
             List<String> list = new ArrayList<>(units);
-            list.add(ADD_NEW_OPTION);
+            if (mIsAdmin) list.add(ADD_NEW_OPTION);
             ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_dropdown_item_1line, list);
             mUnitDropdown.setAdapter(adapter);
             mUnitDropdown.setText(mItem.getUnit(), false);
@@ -326,7 +370,7 @@ public class SupplyDetailFragment extends Fragment {
         SupplyLab.get(getActivity()).getRoomsAsync(rooms -> {
             if (!isAdded()) return;
             List<String> list = new ArrayList<>(rooms);
-            list.add(ADD_NEW_OPTION);
+            if (mIsAdmin) list.add(ADD_NEW_OPTION);
             ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_dropdown_item_1line, list);
             mRoomDropdown.setAdapter(adapter);
             mRoomDropdown.setText(mItem.getRoom(), false);
@@ -365,14 +409,98 @@ public class SupplyDetailFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
         MenuItem deleteItem = menu.findItem(R.id.delete_supply);
-        if (mIsNewItem && deleteItem != null) deleteItem.setVisible(false);
+        if (deleteItem != null) {
+            deleteItem.setVisible(mIsAdmin && !mIsNewItem);
+        }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.delete_supply) { confirmDelete(); return true; }
+        if (id == R.id.action_borrow) { showBorrowDialog(); return true; }
+        if (id == R.id.action_use) { showUseDialog(); return true; }
+        if (id == R.id.action_history) { showHistoryDialog(); return true; }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void showBorrowDialog() {
+        View v = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_borrow, null);
+        TextInputEditText borrowerField = v.findViewById(R.id.borrower_name);
+        TextInputEditText qtyField = v.findViewById(R.id.borrow_quantity);
+        TextInputEditText unitIdField = v.findViewById(R.id.borrow_unit_id);
+        
+        new MaterialAlertDialogBuilder(getActivity())
+                .setTitle("Borrow Item")
+                .setView(v)
+                .setPositiveButton("Borrow", (d, w) -> {
+                    String name = borrowerField.getText().toString();
+                    String qtyStr = qtyField.getText().toString();
+                    String unitId = unitIdField.getText().toString();
+                    if (name.isEmpty() || qtyStr.isEmpty()) return;
+                    int qty = Integer.parseInt(qtyStr);
+                    SupplyLab.get(getActivity()).borrowItemAsync(mItem.getId(), name, qty, System.currentTimeMillis(), System.currentTimeMillis() + 604800000L, unitId, success -> {
+                        if (success) {
+                            Toast.makeText(getActivity(), "Item borrowed", Toast.LENGTH_SHORT).show();
+                            loadItemAsync(mItem.getId());
+                        } else {
+                            Toast.makeText(getActivity(), "Failed to borrow (insufficient stock)", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showUseDialog() {
+        final TextInputEditText input = new TextInputEditText(getActivity());
+        input.setHint("Quantity to consume");
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        new MaterialAlertDialogBuilder(getActivity())
+                .setTitle("Consume Item")
+                .setView(input)
+                .setPositiveButton("Use", (d, w) -> {
+                    String qtyStr = input.getText().toString();
+                    if (qtyStr.isEmpty()) return;
+                    int qty = Integer.parseInt(qtyStr);
+                    SupplyLab.get(getActivity()).useConsumableAsync(mItem.getId(), qty, success -> {
+                        if (success) {
+                            Toast.makeText(getActivity(), "Quantity updated", Toast.LENGTH_SHORT).show();
+                            loadItemAsync(mItem.getId());
+                        } else {
+                            Toast.makeText(getActivity(), "Failed to consume (insufficient stock)", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void showHistoryDialog() {
+        SupplyLab.get(getActivity()).getAllHistoryAsync(records -> {
+            List<HistoryRecord> itemRecords = new ArrayList<>();
+            for (HistoryRecord r : records) {
+                if (r.getItemId().equals(mItem.getId())) itemRecords.add(r);
+            }
+            
+            if (itemRecords.isEmpty()) {
+                Toast.makeText(getActivity(), "No history found for this item", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            String[] historyItems = new String[itemRecords.size()];
+            SimpleDateFormat fmt = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
+            for (int i = 0; i < itemRecords.size(); i++) {
+                HistoryRecord r = itemRecords.get(i);
+                historyItems[i] = fmt.format(r.getTimestamp()) + ": " + r.getAction() + " - " + r.getDetails();
+            }
+
+            new MaterialAlertDialogBuilder(getActivity())
+                    .setTitle("Item History")
+                    .setItems(historyItems, null)
+                    .setPositiveButton("OK", null)
+                    .show();
+        });
     }
 
     private void saveItem() {
@@ -380,15 +508,21 @@ public class SupplyDetailFragment extends Fragment {
             Toast.makeText(getActivity(), "Please enter an item name", Toast.LENGTH_SHORT).show();
             return;
         }
+        
+        if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.VISIBLE);
+        
         if (mIsNewItem) {
             SupplyLab.get(getActivity()).addSupply(mItem, result -> {
+                if (!isAdded()) return;
                 Toast.makeText(getActivity(), "Supply saved", Toast.LENGTH_SHORT).show();
                 getActivity().finish();
             });
         } else {
-            SupplyLab.get(getActivity()).updateSupply(mItem);
-            Toast.makeText(getActivity(), "Supply updated", Toast.LENGTH_SHORT).show();
-            getActivity().finish();
+            SupplyLab.get(getActivity()).updateSupply(mItem, result -> {
+                if (!isAdded()) return;
+                Toast.makeText(getActivity(), "Supply updated", Toast.LENGTH_SHORT).show();
+                getActivity().finish();
+            });
         }
     }
 
@@ -397,8 +531,11 @@ public class SupplyDetailFragment extends Fragment {
                 .setTitle("Delete Supply")
                 .setMessage("Are you sure you want to delete this item?")
                 .setPositiveButton("Delete", (dialog, which) -> {
-                    SupplyLab.get(getActivity()).deleteSupply(mItem);
-                    getActivity().finish();
+                    if (mLoadingOverlay != null) mLoadingOverlay.setVisibility(View.VISIBLE);
+                    SupplyLab.get(getActivity()).deleteSupply(mItem, result -> {
+                        if (!isAdded()) return;
+                        getActivity().finish();
+                    });
                 })
                 .setNegativeButton("Cancel", null).show();
     }
@@ -425,6 +562,10 @@ public class SupplyDetailFragment extends Fragment {
                     "com.example.schoolsupplyinventory.fileprovider", mPhotoFile);
             getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             updatePhotoView();
+        } else if (requestCode == REQUEST_BARCODE_SCAN && data != null) {
+            String barcode = data.getStringExtra("SCANNED_BARCODE");
+            mBarcodeField.setText(barcode);
+            mItem.setBarcode(barcode);
         }
     }
 }

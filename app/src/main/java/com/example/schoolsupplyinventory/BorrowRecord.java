@@ -13,6 +13,7 @@ public class BorrowRecord {
     private Date mExpectedReturnDate;
     private Date mActualReturnDate;
     private String mStatus;
+    private String mUnitId; // Unique ID of the physical piece borrowed
 
     public BorrowRecord() {
         this(UUID.randomUUID());
@@ -90,5 +91,13 @@ public class BorrowRecord {
 
     public void setStatus(String status) {
         mStatus = status;
+    }
+
+    public String getUnitId() {
+        return mUnitId;
+    }
+
+    public void setUnitId(String unitId) {
+        mUnitId = unitId;
     }
 }

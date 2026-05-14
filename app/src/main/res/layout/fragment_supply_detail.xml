@@ -81,12 +81,14 @@
                         android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/supply_barcode_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Item ID / Barcode"
                         android:layout_marginBottom="16dp"
                         app:endIconMode="custom"
                         app:endIconDrawable="@android:drawable/ic_menu_camera"
+                        app:endIconContentDescription="Scan Barcode"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
 
                         <com.google.android.material.textfield.TextInputEditText
@@ -176,6 +178,22 @@
                     </LinearLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/supply_unit_identifiers_layout"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Unit Identifiers (Comma-separated)"
+                        android:layout_marginBottom="16dp"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                        app:helperText="Unique IDs for each piece (e.g. SN001, SN002)">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/supply_unit_identifiers"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textMultiLine" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Description"
@@ -245,7 +263,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Inventory Details Card -->
+            <!-- Stock Information Card -->
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.App.CardView"
                 android:layout_width="match_parent"
@@ -313,30 +331,14 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Dates Card -->
-            <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.CardView"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/supply_date"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/supply_date"
-                        style="@style/Widget.Material3.Button.TonalButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Date Added: Mar 1, 2024"
-                        app:icon="@android:drawable/ic_menu_today"
-                        android:layout_marginBottom="8dp" />
-
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                android:text="Date Added"
+                app:icon="@android:drawable/ic_menu_today"
+                android:layout_marginBottom="20dp" />
 
         </LinearLayout>
     </ScrollView>
@@ -352,5 +354,23 @@
         app:backgroundTint="?attr/colorPrimary"
         android:textColor="?attr/colorOnPrimary"
         app:iconTint="?attr/colorOnPrimary" />
+
+    <!-- Loading Overlay -->
+    <FrameLayout
+        android:id="@+id/loading_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            app:indicatorSize="48dp"
+            app:trackThickness="4dp" />
+    </FrameLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

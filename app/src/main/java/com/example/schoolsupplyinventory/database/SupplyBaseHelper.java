@@ -15,7 +15,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 18;
+    private static final int VERSION = 19;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -46,7 +46,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.IS_BORROWABLE + ", " +
                 SupplyTable.Cols.DESCRIPTION + ", " +
                 SupplyTable.Cols.CONDITION + ", " +
-                SupplyTable.Cols.STATUS + ")"
+                SupplyTable.Cols.STATUS + ", " +
+                SupplyTable.Cols.UNIT_IDENTIFIERS + ")"
         );
 
         db.execSQL("create table " + UserTable.NAME + "(" +
@@ -77,7 +78,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 BorrowTable.Cols.DATE_BORROWED + ", " +
                 BorrowTable.Cols.EXPECTED_RETURN_DATE + ", " +
                 BorrowTable.Cols.ACTUAL_RETURN_DATE + ", " +
-                BorrowTable.Cols.STATUS + ")"
+                BorrowTable.Cols.STATUS + ", " +
+                BorrowTable.Cols.UNIT_ID + ")"
         );
     }
 
@@ -151,7 +153,6 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // ... (previous upgrade steps omitted for brevity, but they should remain)
         if (oldVersion < 16) {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.DESCRIPTION + " text");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.CONDITION + " text default 'New'");
@@ -166,10 +167,10 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.AVAILABLE_QUANTITY + " integer");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.BORROWED_QUANTITY + " integer default 0");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.USED_QUANTITY + " integer default 0");
-            
-            // Migrate old quantity data
-            db.execSQL("update " + SupplyTable.NAME + " set " + SupplyTable.Cols.TOTAL_QUANTITY + " = quantity");
-            db.execSQL("update " + SupplyTable.NAME + " set " + SupplyTable.Cols.AVAILABLE_QUANTITY + " = quantity");
+        }
+        if (oldVersion < 19) {
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.UNIT_IDENTIFIERS + " text");
+            db.execSQL("alter table " + BorrowTable.NAME + " add column " + BorrowTable.Cols.UNIT_ID + " text");
         }
     }
 }

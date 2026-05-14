@@ -1,5 +1,6 @@
 package com.example.schoolsupplyinventory;
 
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
@@ -52,6 +53,7 @@ public class SupplyListFragment extends Fragment {
     private List<SupplyItem> mAllItems;
     private String mSelectedCategory = null;
     private OnBackPressedCallback mOnBackPressedCallback;
+    private boolean mIsAdmin = true;
     
     private LruCache<String, Bitmap> mThumbnailCache;
     private final ExecutorService mImageExecutor = Executors.newFixedThreadPool(2);
@@ -74,6 +76,8 @@ public class SupplyListFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
 
+        mIsAdmin = "ADMIN".equals(getActivity().getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN"));
+
         final int maxMemory = (int) (Runtime.getRuntime().maxMemory() / 1024);
         final int cacheSize = maxMemory / 8;
         mThumbnailCache = new LruCache<String, Bitmap>(cacheSize) {
@@ -89,6 +93,9 @@ public class SupplyListFragment extends Fragment {
                 if (mSelectedCategory != null) {
                     mSelectedCategory = null;
                     applyFilters();
+                } else {
+                    setEnabled(false);
+                    requireActivity().onBackPressed();
                 }
             }
         };
@@ -128,12 +135,21 @@ public class SupplyListFragment extends Fragment {
         mEmptyStateView = view.findViewById(R.id.empty_state_view);
 
         mAddSupplyFab = view.findViewById(R.id.add_supply_fab);
-        mAddSupplyFab.setOnClickListener(v -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
+        if (mIsAdmin) {
+            mAddSupplyFab.setOnClickListener(v -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
+        } else {
+            mAddSupplyFab.setVisibility(View.GONE);
+        }
 
         setupItemTouchHelper();
-        updateUI();
-
+        
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        updateUI();
     }
 
     private void updateSubFilterVisibility() {
@@ -187,7 +203,7 @@ public class SupplyListFragment extends Fragment {
                         } else if (subCheckedId == R.id.chip_sub_used) {
                             matchesSub = item.getUsedQuantity() > 0;
                         } else if (subCheckedId == R.id.chip_sub_low_stock) {
-                            matchesSub = item.getAvailableQuantity() <= 5 && item.getAvailableQuantity() > 0;
+                            matchesSub = SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType()) && item.getAvailableQuantity() <= 5 && item.getAvailableQuantity() > 0;
                         }
                     }
 
@@ -227,15 +243,14 @@ public class SupplyListFragment extends Fragment {
                             .setTitle("Delete Item")
                             .setMessage("Delete " + item.getName() + "?")
                             .setPositiveButton("Delete", (d, w) -> {
-                                SupplyLab.get(getActivity()).deleteSupply(item);
-                                updateUI();
+                                SupplyLab.get(getActivity()).deleteSupply(item, result -> updateUI());
                             })
                             .setNegativeButton("Cancel", (d, w) -> mAdapter.notifyItemChanged(viewHolder.getAdapterPosition()))
                             .show();
                 } else mAdapter.notifyItemChanged(viewHolder.getAdapterPosition());
             }
             @Override public int getSwipeDirs(@NonNull RecyclerView rv, @NonNull RecyclerView.ViewHolder vh) {
-                if (vh instanceof CategoryHolder) return 0;
+                if (!mIsAdmin || vh instanceof CategoryHolder) return 0;
                 return super.getSwipeDirs(rv, vh);
             }
         };
@@ -243,8 +258,14 @@ public class SupplyListFragment extends Fragment {
     }
 
     private void updateUI() {
+        if (mAllItems == null) {
+            mShimmerViewContainer.startShimmer();
+            mShimmerViewContainer.setVisibility(View.VISIBLE);
+        }
+        
         SupplyLab.get(getActivity()).getItemsAsync(items -> {
             if (!isAdded()) return;
+            mShimmerViewContainer.stopShimmer();
             mShimmerViewContainer.setVisibility(View.GONE);
             mSupplyRecyclerView.setVisibility(View.VISIBLE);
             mAllItems = items;
@@ -293,19 +314,47 @@ public class SupplyListFragment extends Fragment {
             mCategory.setText(item.getCategory() + " • " + item.getItemType().toUpperCase());
             mQuantity.setText("Available: " + item.getAvailableQuantity() + " / Total: " + item.getTotalQuantity() + " " + item.getUnit());
             
-            mStatus.setText(item.getStatus().toUpperCase());
             int color = R.color.color_success;
             if (item.getAvailableQuantity() == 0) {
                 mStatus.setText("OUT OF STOCK");
                 color = R.color.color_error;
-            } else if (item.getAvailableQuantity() <= 5) {
+            } else if (SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType()) && item.getAvailableQuantity() <= 5) {
                 mStatus.setText("LOW STOCK");
                 color = R.color.color_warning;
-            } else if (SupplyItem.TYPE_BORROWABLE.equals(item.getItemType()) && item.getBorrowedQuantity() > 0) {
+            } else if (SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(item.getItemType()) && item.getBorrowedQuantity() > 0) {
                 mStatus.setText("ON LOAN");
                 color = R.color.color_info;
+            } else {
+                mStatus.setText("AVAILABLE");
+                color = R.color.color_success;
             }
             mStatus.setTextColor(ContextCompat.getColor(getActivity(), color));
+            
+            loadThumbnail(item);
+        }
+
+        private void loadThumbnail(SupplyItem item) {
+            mThumbnail.setImageResource(R.drawable.ic_image_placeholder);
+            String path = SupplyLab.get(getActivity()).getPhotoFile(item).getPath();
+            Bitmap cached = mThumbnailCache.get(path);
+            if (cached != null) {
+                mThumbnail.setImageBitmap(cached);
+            } else {
+                mImageExecutor.execute(() -> {
+                    File file = new File(path);
+                    if (file.exists()) {
+                        Bitmap bitmap = PictureUtils.getScaledBitmap(path, 80, 80);
+                        if (bitmap != null) {
+                            mThumbnailCache.put(path, bitmap);
+                            mMainHandler.post(() -> {
+                                if (mItem.getId().equals(item.getId())) {
+                                    mThumbnail.setImageBitmap(bitmap);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
         }
     }
 

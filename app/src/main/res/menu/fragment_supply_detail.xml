@@ -1,14 +1,23 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/save_supply"
-        android:icon="@android:drawable/ic_menu_save"
-        android:title="Save"
-        android:visible="false"
+        android:id="@+id/action_borrow"
+        android:icon="@android:drawable/ic_menu_share"
+        android:title="Borrow"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_use"
+        android:icon="@android:drawable/ic_menu_delete"
+        android:title="Consume"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_history"
+        android:icon="@android:drawable/ic_menu_info_details"
+        android:title="History"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/delete_supply"
         android:icon="@android:drawable/ic_menu_delete"
         android:title="Delete"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="never" />
 </menu>

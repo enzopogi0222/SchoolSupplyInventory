@@ -39,6 +39,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         String description = getString(getColumnIndexOrThrow(SupplyTable.Cols.DESCRIPTION));
         String condition = getString(getColumnIndexOrThrow(SupplyTable.Cols.CONDITION));
         String status = getString(getColumnIndexOrThrow(SupplyTable.Cols.STATUS));
+        String unitIdentifiers = getString(getColumnIndexOrThrow(SupplyTable.Cols.UNIT_IDENTIFIERS));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
@@ -65,6 +66,7 @@ public class SupplyCursorWrapper extends CursorWrapper {
         item.setDescription(description != null ? description : "");
         item.setCondition(condition != null ? condition : "New");
         item.setStatus(status != null ? status : "Available");
+        item.setUnitIdentifiers(unitIdentifiers != null ? unitIdentifiers : "");
 
         return item;
     }

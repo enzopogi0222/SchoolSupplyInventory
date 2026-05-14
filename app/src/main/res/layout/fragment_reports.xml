@@ -3,12 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background">
+    android:background="?attr/android:windowBackground">
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background"
+        android:background="?attr/android:windowBackground"
         app:elevation="0dp">
 
         <LinearLayout
@@ -60,13 +60,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Borrowable" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_damaged_reports"
-                        style="@style/Widget.Material3.Chip.Filter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Damaged" />
 
                 </com.google.android.material.chip.ChipGroup>
             </HorizontalScrollView>
@@ -157,7 +150,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Usage by Room"
+                        android:text="Issued by Room"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:layout_marginBottom="16dp" />
 
@@ -243,7 +236,7 @@
                     android:layout_height="64dp"
                     android:layout_weight="1"
                     android:layout_marginEnd="8dp"
-                    android:text="PDF"
+                    android:text="PDF Report"
                     app:icon="@android:drawable/ic_menu_save"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
 
@@ -253,23 +246,31 @@
                     android:layout_width="0dp"
                     android:layout_height="64dp"
                     android:layout_weight="1"
-                    android:layout_marginHorizontal="4dp"
-                    android:text="CSV"
-                    app:icon="@android:drawable/ic_menu_share"
-                    app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_export_excel"
-                    style="@style/Widget.Material3.Button.TonalButton"
-                    android:layout_width="0dp"
-                    android:layout_height="64dp"
-                    android:layout_weight="1"
                     android:layout_marginStart="8dp"
-                    android:text="Excel"
+                    android:text="CSV Logs"
                     app:icon="@android:drawable/ic_menu_share"
                     app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.MediumComponent" />
             </LinearLayout>
 
         </LinearLayout>
     </ScrollView>
+
+    <!-- Loading Overlay -->
+    <FrameLayout
+        android:id="@+id/loading_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#80000000"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true">
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            app:indicatorSize="48dp"
+            app:trackThickness="4dp" />
+    </FrameLayout>
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -26,6 +26,7 @@ public class SupplyDbSchema {
             public static final String CONDITION = "condition";
             public static final String STATUS = "status";
             public static final String IS_BORROWABLE = "is_borrowable";
+            public static final String UNIT_IDENTIFIERS = "unit_identifiers"; // New: stores unique IDs for each piece
             
             // For backward compatibility during migration
             public static final String BORROWED = "borrowed";
@@ -59,6 +60,7 @@ public class SupplyDbSchema {
             public static final String EXPECTED_RETURN_DATE = "expected_return_date";
             public static final String ACTUAL_RETURN_DATE = "actual_return_date";
             public static final String STATUS = "status";
+            public static final String UNIT_ID = "unit_id"; // New: stores the unique ID of the borrowed piece
         }
     }
 

@@ -1,18 +1,7 @@
 package com.example.schoolsupplyinventory;
 
-import android.app.Activity;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
-import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
-import android.os.Build;
-import androidx.core.app.NotificationCompat;
-import androidx.core.app.NotificationManagerCompat;
-import android.Manifest;
-import android.content.pm.PackageManager;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -21,20 +10,16 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.datepicker.MaterialDatePicker;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
-import android.util.Log;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
@@ -43,24 +28,20 @@ import java.util.stream.Collectors;
 
 public class DashboardFragment extends Fragment {
 
-    private TextView mTotalCountText, mConsumableCountText, mBorrowableCountText, mBorrowedCountText, mLowStockCountText;
+    private TextView mTotalCountText, mConsumableCountText, mBorrowableCountText, mBorrowedCountText, mLowStockCountText, mUserNameText;
     private ViewGroup mRecentActivityContainer;
-    private View mUseConsumableButton;
+    private View mAddItemCard;
+    private MaterialButton mReportsButton;
 
-    private static final String CHANNEL_ID = "supply_alerts";
-    private ActivityResultLauncher<String> requestPermissionLauncher;
     private Calendar mExpectedReturnDate = Calendar.getInstance();
     private SupplyItem mSelectedBorrowItem, mSelectedConsumableItem;
     private BorrowRecord mSelectedReturnRecord;
+    private boolean mIsAdmin = true;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        createNotificationChannel();
-        requestPermissionLauncher = registerForActivityResult(
-                new ActivityResultContracts.RequestPermission(),
-                isGranted -> { if (isGranted) checkInventoryAlerts(); }
-        );
+        mIsAdmin = SupplyLab.get(getActivity()).isAdmin();
     }
 
     @Override
@@ -72,24 +53,40 @@ public class DashboardFragment extends Fragment {
         mBorrowableCountText = v.findViewById(R.id.dashboard_borrowable_count);
         mBorrowedCountText = v.findViewById(R.id.dashboard_borrowed_count);
         mLowStockCountText = v.findViewById(R.id.dashboard_low_stock_count);
+        mUserNameText = v.findViewById(R.id.dashboard_user_name);
         mRecentActivityContainer = v.findViewById(R.id.recent_activity_container);
 
+        mAddItemCard = v.findViewById(R.id.dashboard_add_item);
+        mReportsButton = v.findViewById(R.id.dashboard_reports);
+
+        // Reflect Role in Header
+        mUserNameText.setText(mIsAdmin ? "System Admin" : "Staff Member");
+
+        // Action: View Inventory (Available for both)
         v.findViewById(R.id.dashboard_view_inventory).setOnClickListener(view -> loadFragment(new SupplyListFragment()));
-        v.findViewById(R.id.dashboard_add_item).setOnClickListener(view -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
+        
+        // Restriction: Add Item and Reports only for Admin
+        if (mIsAdmin) {
+            mAddItemCard.setVisibility(View.VISIBLE);
+            mAddItemCard.setOnClickListener(view -> startActivity(SupplyPagerActivity.newIntent(getActivity(), null)));
+            mReportsButton.setVisibility(View.VISIBLE);
+            mReportsButton.setOnClickListener(v1 -> loadFragment(new ReportsFragment()));
+        } else {
+            mAddItemCard.setVisibility(View.GONE);
+            mReportsButton.setVisibility(View.GONE);
+        }
+
+        // Action: Borrow/Return/Use (Available for both)
         v.findViewById(R.id.dashboard_borrow_item).setOnClickListener(v1 -> showBorrowBottomSheet());
         v.findViewById(R.id.dashboard_return_item).setOnClickListener(v1 -> showReturnBottomSheet());
+        v.findViewById(R.id.dashboard_use_consumable).setOnClickListener(v1 -> showUseConsumableDialog());
         
-        mUseConsumableButton = v.findViewById(R.id.dashboard_use_consumable);
-        mUseConsumableButton.setOnClickListener(v1 -> showUseConsumableDialog());
-        
-        v.findViewById(R.id.dashboard_reports).setOnClickListener(v1 -> loadFragment(new ReportsFragment()));
         v.findViewById(R.id.dashboard_logout).setOnClickListener(v1 -> {
             startActivity(new Intent(getActivity(), LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         });
 
         updateStats();
         loadRecentActivity();
-        checkAndRequestNotificationPermission();
 
         return v;
     }
@@ -143,13 +140,12 @@ public class DashboardFragment extends Fragment {
 
             int qty = Integer.parseInt(qtyStr);
             if (qty <= 0 || qty > mSelectedConsumableItem.getAvailableQuantity()) {
-                Toast.makeText(getActivity(), "Invalid quantity or out of stock", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             SupplyLab.get(getActivity()).useConsumableAsync(mSelectedConsumableItem.getId(), qty, success -> {
                 if (success) {
-                    Toast.makeText(getActivity(), "Stock updated permanently", Toast.LENGTH_SHORT).show();
                     updateStats();
                     loadRecentActivity();
                     dialog.dismiss();
@@ -166,6 +162,10 @@ public class DashboardFragment extends Fragment {
 
         MaterialAutoCompleteTextView itemSearch = view.findViewById(R.id.borrow_item_autocomplete);
         itemSearch.setThreshold(0);
+
+        TextInputLayout unitIdLayout = view.findViewById(R.id.borrow_unit_id_layout);
+        MaterialAutoCompleteTextView unitIdAutocomplete = view.findViewById(R.id.borrow_unit_id_autocomplete);
+        unitIdAutocomplete.setThreshold(0);
 
         TextView itemNameDisplay = view.findViewById(R.id.borrow_item_name_display);
         TextInputEditText borrowerNameEdit = view.findViewById(R.id.borrower_name_edit);
@@ -194,6 +194,25 @@ public class DashboardFragment extends Fragment {
                 mSelectedBorrowItem = borrowables.get(position);
                 itemNameDisplay.setText("Item: " + mSelectedBorrowItem.getName() + " (Avail: " + mSelectedBorrowItem.getAvailableQuantity() + ")");
                 qtyEdit.setText("1");
+
+                List<String> allUnits = mSelectedBorrowItem.getUnitIdentifiersList();
+                if (allUnits.isEmpty()) {
+                    unitIdLayout.setVisibility(View.GONE);
+                } else {
+                    unitIdLayout.setVisibility(View.VISIBLE);
+                    SupplyLab.get(getActivity()).getActiveBorrowRecordsAsync(records -> {
+                        List<String> borrowed = records.stream()
+                                .filter(r -> r.getItemId().equals(mSelectedBorrowItem.getId()))
+                                .map(BorrowRecord::getUnitId).collect(Collectors.toList());
+                        
+                        List<String> available = allUnits.stream()
+                                .filter(u -> !borrowed.contains(u)).collect(Collectors.toList());
+                        
+                        unitIdAutocomplete.setAdapter(new ArrayAdapter<>(requireContext(), 
+                                android.R.layout.simple_dropdown_item_1line, available));
+                        unitIdAutocomplete.setOnClickListener(v1 -> unitIdAutocomplete.showDropDown());
+                    });
+                }
             });
         });
 
@@ -211,16 +230,18 @@ public class DashboardFragment extends Fragment {
         confirmBtn.setOnClickListener(v -> {
             String borrower = borrowerNameEdit.getText().toString().trim();
             String qtyStr = qtyEdit.getText().toString().trim();
+            String unitId = unitIdAutocomplete.getText().toString().trim();
+            
             if (mSelectedBorrowItem == null || borrower.isEmpty() || qtyStr.isEmpty()) return;
 
             int qty = Integer.parseInt(qtyStr);
             if (qty <= 0 || qty > mSelectedBorrowItem.getAvailableQuantity()) {
-                Toast.makeText(getActivity(), "Invalid quantity or out of stock", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
                 return;
             }
 
             SupplyLab.get(getActivity()).borrowItemAsync(mSelectedBorrowItem.getId(), borrower, qty, 
-                System.currentTimeMillis(), mExpectedReturnDate.getTimeInMillis(), success -> {
+                System.currentTimeMillis(), mExpectedReturnDate.getTimeInMillis(), unitId, success -> {
                     if (success) {
                         updateStats();
                         loadRecentActivity();
@@ -251,7 +272,9 @@ public class DashboardFragment extends Fragment {
                             SupplyItem item = items.stream()
                                     .filter(i -> i.getId().equals(record.getItemId()))
                                     .findFirst().orElse(null);
-                            return (item != null ? item.getName() : "Item") + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
+                            String unitInfo = (record.getUnitId() != null && !record.getUnitId().isEmpty()) 
+                                    ? " [" + record.getUnitId() + "]" : "";
+                            return (item != null ? item.getName() : "Item") + unitInfo + " - " + record.getBorrowerName() + " (" + record.getQuantity() + ")";
                         }).collect(Collectors.toList());
 
                 ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, displayStrings);
@@ -259,7 +282,7 @@ public class DashboardFragment extends Fragment {
                 recordSearch.setOnClickListener(v -> recordSearch.showDropDown());
                 recordSearch.setOnItemClickListener((parent, view1, position, id) -> {
                     mSelectedReturnRecord = records.get(position);
-                    returnInfoText.setText("Returning from: " + mSelectedReturnRecord.getBorrowerName());
+                    returnInfoText.setText("Returning: " + recordSearch.getAdapter().getItem(position));
                     qtyEdit.setText(String.valueOf(mSelectedReturnRecord.getQuantity()));
                 });
             });
@@ -282,11 +305,12 @@ public class DashboardFragment extends Fragment {
 
     private void updateStats() {
         SupplyLab.get(getActivity()).getItemsAsync(items -> {
+            if (!isAdded()) return;
             int total = items.size();
             long consumable = items.stream().filter(i -> SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(i.getItemType())).count();
             long borrowable = items.stream().filter(i -> SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(i.getItemType())).count();
             int borrowed = items.stream().mapToInt(SupplyItem::getBorrowedQuantity).sum();
-            long lowStock = items.stream().filter(i -> i.getAvailableQuantity() <= 5).count();
+            long lowStock = items.stream().filter(i -> SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(i.getItemType()) && i.getAvailableQuantity() <= 5 && i.getAvailableQuantity() > 0).count();
 
             mTotalCountText.setText(String.valueOf(total));
             mConsumableCountText.setText(String.valueOf(consumable));
@@ -299,6 +323,7 @@ public class DashboardFragment extends Fragment {
     private void loadRecentActivity() {
         mRecentActivityContainer.removeAllViews();
         SupplyLab.get(getActivity()).getAllHistoryAsync(records -> {
+            if (!isAdded()) return;
             int count = 0;
             LayoutInflater inflater = LayoutInflater.from(requireContext());
             for (HistoryRecord record : records) {
@@ -311,35 +336,6 @@ public class DashboardFragment extends Fragment {
                 count++;
             }
         });
-    }
-
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Inventory Alerts", NotificationManager.IMPORTANCE_HIGH);
-            getActivity().getSystemService(NotificationManager.class).createNotificationChannel(channel);
-        }
-    }
-
-    private void checkAndRequestNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS);
-            } else checkInventoryAlerts();
-        } else checkInventoryAlerts();
-    }
-
-    private void checkInventoryAlerts() {
-        SupplyLab.get(requireActivity()).getItemsAsync(items -> {
-            long lowStock = items.stream().filter(i -> i.getAvailableQuantity() > 0 && i.getAvailableQuantity() <= 5).count();
-            if (lowStock > 0) sendLocalNotification("Low Stock Alert", lowStock + " items are running low.");
-        });
-    }
-
-    private void sendLocalNotification(String title, String text) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(requireContext(), CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.stat_sys_warning).setContentTitle(title).setContentText(text)
-                .setPriority(NotificationCompat.PRIORITY_HIGH).setAutoCancel(true);
-        try { NotificationManagerCompat.from(requireContext()).notify(1, builder.build()); } catch (SecurityException e) {}
     }
 
     private void updateDateButtonText(MaterialButton button) {
