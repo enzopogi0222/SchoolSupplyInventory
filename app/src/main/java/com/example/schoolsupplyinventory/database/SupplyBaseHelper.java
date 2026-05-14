@@ -11,10 +11,11 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.HistoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RequestTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 16;
+    private static final int VERSION = 17;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -57,6 +58,7 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
 
         createBorrowTable(db);
         createCategoryTable(db);
+        createUnitTable(db);
         createRoomTable(db);
         createHistoryTable(db);
         createRequestTable(db);
@@ -82,7 +84,6 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 " _id integer primary key autoincrement, " +
                 CategoryTable.Cols.NAME + " UNIQUE)"
         );
-        // Initial categories based on user requirements
         String[] initials = {
             "OFFICE SUPPLIES", "ICT EQUIPMENT", "SPORTS", "CLEANING MATERIALS",
             "LABORATORY EQUIPMENT", "STATIONERY", "BOOKS", "FURNITURE", "APPLIANCES"
@@ -94,12 +95,24 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
     }
 
+    private void createUnitTable(SQLiteDatabase db) {
+        db.execSQL("create table " + UnitTable.NAME + "(" +
+                " _id integer primary key autoincrement, " +
+                UnitTable.Cols.NAME + " UNIQUE)"
+        );
+        String[] initials = {"PIECE", "BOX", "SET", "PACK", "UNIT", "REAM"};
+        for (String unit : initials) {
+            ContentValues values = new ContentValues();
+            values.put(UnitTable.Cols.NAME, unit);
+            db.insert(UnitTable.NAME, null, values);
+        }
+    }
+
     private void createRoomTable(SQLiteDatabase db) {
         db.execSQL("create table " + RoomTable.NAME + "(" +
                 " _id integer primary key autoincrement, " +
                 RoomTable.Cols.NAME + " UNIQUE)"
         );
-        // Initial rooms
         String[] initials = {"ITE OFFICE", "COMLAB-A", "COMLAB-B", "COMLAB-C", "CLASSROOM 101", "CLASSROOM 102"};
         for (String room : initials) {
             ContentValues values = new ContentValues();
@@ -194,6 +207,9 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.DESCRIPTION + " text");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.CONDITION + " text default 'New'");
             db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.STATUS + " text default 'Available'");
+        }
+        if (oldVersion < 17) {
+            createUnitTable(db);
         }
     }
 }

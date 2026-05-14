@@ -160,7 +160,7 @@ public class SupplyDetailFragment extends Fragment {
         }));
 
         mUnitDropdown = v.findViewById(R.id.supply_unit);
-        setupStaticDropdown(mUnitDropdown, new String[]{"Piece", "Box", "Set", "Pack", "Unit"}, mItem.getUnit(), s -> mItem.setUnit(s));
+        updateUnitList();
 
         mDescriptionField = v.findViewById(R.id.supply_description);
         mDescriptionField.setText(mItem.getDescription());
@@ -295,6 +295,27 @@ public class SupplyDetailFragment extends Fragment {
         });
     }
 
+    private void updateUnitList() {
+        SupplyLab.get(getActivity()).getUnitsAsync(units -> {
+            if (!isAdded()) return;
+            List<String> list = new ArrayList<>(units);
+            list.add(ADD_NEW_OPTION);
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_dropdown_item_1line, list);
+            mUnitDropdown.setAdapter(adapter);
+            mUnitDropdown.setText(mItem.getUnit(), false);
+            mUnitDropdown.setOnItemClickListener((parent, view, position, id) -> {
+                String selection = adapter.getItem(position);
+                if (ADD_NEW_OPTION.equals(selection)) {
+                    showAddOptionDialog("Unit", (newOption) -> {
+                        SupplyLab.get(getActivity()).addUnitAsync(newOption, success -> {
+                            if (success) { mItem.setUnit(newOption); updateUnitList(); }
+                        });
+                    });
+                } else { mItem.setUnit(selection); }
+            });
+        });
+    }
+
     private void updateRoomList() {
         SupplyLab.get(getActivity()).getRoomsAsync(rooms -> {
             if (!isAdded()) return;
@@ -328,6 +349,7 @@ public class SupplyDetailFragment extends Fragment {
                 })
                 .setNegativeButton("Cancel", (d, w) -> {
                     if (title.equals("Category")) mCategoryDropdown.setText(mItem.getCategory(), false);
+                    else if (title.equals("Unit")) mUnitDropdown.setText(mItem.getUnit(), false);
                     else mRoomDropdown.setText(mItem.getRoom(), false);
                 }).show();
     }

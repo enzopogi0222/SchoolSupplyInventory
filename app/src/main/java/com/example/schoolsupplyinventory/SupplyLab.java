@@ -15,6 +15,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.HistoryTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RequestTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
+import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 import java.io.File;
@@ -495,6 +496,32 @@ public class SupplyLab {
             ContentValues values = new ContentValues();
             values.put(CategoryTable.Cols.NAME, category.toUpperCase());
             long result = mDatabase.insertWithOnConflict(CategoryTable.NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE);
+            mMainHandler.post(() -> callback.onComplete(result != -1));
+        });
+    }
+
+    public void getUnitsAsync(Callback<List<String>> callback) {
+        mExecutor.execute(() -> {
+            List<String> units = new ArrayList<>();
+            Cursor cursor = mDatabase.query(UnitTable.NAME, null, null, null, null, null, UnitTable.Cols.NAME + " ASC");
+            try {
+                cursor.moveToFirst();
+                while (!cursor.isAfterLast()) {
+                    units.add(cursor.getString(cursor.getColumnIndexOrThrow(UnitTable.Cols.NAME)));
+                    cursor.moveToNext();
+                }
+            } finally {
+                cursor.close();
+            }
+            mMainHandler.post(() -> callback.onComplete(units));
+        });
+    }
+
+    public void addUnitAsync(String unit, Callback<Boolean> callback) {
+        mExecutor.execute(() -> {
+            ContentValues values = new ContentValues();
+            values.put(UnitTable.Cols.NAME, unit.toUpperCase());
+            long result = mDatabase.insertWithOnConflict(UnitTable.NAME, null, values, SQLiteDatabase.CONFLICT_IGNORE);
             mMainHandler.post(() -> callback.onComplete(result != -1));
         });
     }

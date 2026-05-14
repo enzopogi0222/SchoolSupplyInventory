@@ -22,7 +22,6 @@ public class SupplyDbSchema {
             public static final String CONDITION = "condition";
             public static final String STATUS = "status";
             public static final String IS_BORROWABLE = "is_borrowable";
-            // Keep for compatibility during migration if needed
             public static final String BORROWED = "borrowed";
             public static final String BORROWER = "borrower";
         }
@@ -71,6 +70,13 @@ public class SupplyDbSchema {
 
     public static final class CategoryTable {
         public static final String NAME = "categories";
+        public static final class Cols {
+            public static final String NAME = "name";
+        }
+    }
+
+    public static final class UnitTable {
+        public static final String NAME = "units";
         public static final class Cols {
             public static final String NAME = "name";
         }
