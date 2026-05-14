@@ -14,7 +14,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 15;
+    private static final int VERSION = 16;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -40,7 +40,10 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.LOCATION + ", " +
                 SupplyTable.Cols.BARCODE + ", " +
                 SupplyTable.Cols.PROPERTY_TAG + ", " +
-                SupplyTable.Cols.IS_BORROWABLE + ")"
+                SupplyTable.Cols.IS_BORROWABLE + ", " +
+                SupplyTable.Cols.DESCRIPTION + ", " +
+                SupplyTable.Cols.CONDITION + ", " +
+                SupplyTable.Cols.STATUS + ")"
         );
 
         db.execSQL("create table " + UserTable.NAME + "(" +
@@ -81,9 +84,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         );
         // Initial categories based on user requirements
         String[] initials = {
-            "BOND PAPER", "PENS & MARKERS", "CLEANING MATERIALS", 
-            "LABORATORY EQUIPMENT", "SPORTS EQUIPMENT", "OFFICE SUPPLIES", 
-            "ELECTRONICS", "STATIONERY", "BOOKS", "FURNITURE", "APPLIANCES"
+            "OFFICE SUPPLIES", "ICT EQUIPMENT", "SPORTS", "CLEANING MATERIALS",
+            "LABORATORY EQUIPMENT", "STATIONERY", "BOOKS", "FURNITURE", "APPLIANCES"
         };
         for (String cat : initials) {
             ContentValues values = new ContentValues();
@@ -187,6 +189,11 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         if (oldVersion < 15) {
             db.execSQL("alter table " + UserTable.NAME + " add column " + UserTable.Cols.ROLE + " text default 'STAFF'");
             createRequestTable(db);
+        }
+        if (oldVersion < 16) {
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.DESCRIPTION + " text");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.CONDITION + " text default 'New'");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.STATUS + " text default 'Available'");
         }
     }
 }

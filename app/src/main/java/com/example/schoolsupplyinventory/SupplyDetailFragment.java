@@ -24,7 +24,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
@@ -32,11 +31,11 @@ import androidx.fragment.app.Fragment;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
-import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -59,22 +58,19 @@ public class SupplyDetailFragment extends Fragment {
     private boolean mIsNewItem = false;
     
     private TextInputEditText mTitleField;
-    private TextInputEditText mBrandField;
     private TextInputEditText mQuantityField;
-    private TextInputEditText mUnitField;
-    private TextInputEditText mSupplierField;
     private TextInputEditText mBarcodeField;
-    private TextInputEditText mPropertyTagField;
-    private TextInputEditText mLocationField;
+    private TextInputEditText mDescriptionField;
+    private MaterialAutoCompleteTextView mUnitDropdown;
     private MaterialAutoCompleteTextView mCategoryDropdown;
+    private MaterialAutoCompleteTextView mConditionDropdown;
+    private MaterialAutoCompleteTextView mStatusDropdown;
     private MaterialAutoCompleteTextView mRoomDropdown;
     private MaterialButton mDateButton;
-    private MaterialButton mExpirationDateButton;
     private MaterialSwitch mBorrowableSwitch;
-    private MaterialSwitch mBorrowedSwitch;
     private FloatingActionButton mPhotoButton;
+    private ExtendedFloatingActionButton mSaveFab;
     private ImageView mPhotoView;
-    private TextView mLastUpdatedTextView;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -154,10 +150,6 @@ public class SupplyDetailFragment extends Fragment {
         mTitleField.setText(mItem.getName());
         mTitleField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setName(s)));
 
-        mBrandField = v.findViewById(R.id.supply_brand);
-        mBrandField.setText(mItem.getBrand());
-        mBrandField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBrand(s)));
-
         mCategoryDropdown = v.findViewById(R.id.supply_category);
         updateCategoryList();
 
@@ -167,29 +159,27 @@ public class SupplyDetailFragment extends Fragment {
             try { mItem.setQuantity(Integer.parseInt(s)); } catch (Exception e) { mItem.setQuantity(0); }
         }));
 
-        mUnitField = v.findViewById(R.id.supply_unit);
-        mUnitField.setText(mItem.getUnit());
-        mUnitField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setUnit(s)));
+        mUnitDropdown = v.findViewById(R.id.supply_unit);
+        setupStaticDropdown(mUnitDropdown, new String[]{"Piece", "Box", "Set", "Pack", "Unit"}, mItem.getUnit(), s -> mItem.setUnit(s));
 
-        mSupplierField = v.findViewById(R.id.supply_supplier);
-        mSupplierField.setText(mItem.getSupplier());
-        mSupplierField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setSupplier(s)));
+        mDescriptionField = v.findViewById(R.id.supply_description);
+        mDescriptionField.setText(mItem.getDescription());
+        mDescriptionField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setDescription(s)));
+
+        // --- Condition & Status ---
+        mConditionDropdown = v.findViewById(R.id.supply_condition);
+        setupStaticDropdown(mConditionDropdown, new String[]{"New", "Good", "Damaged", "Old"}, mItem.getCondition(), s -> mItem.setCondition(s));
+
+        mStatusDropdown = v.findViewById(R.id.supply_status);
+        setupStaticDropdown(mStatusDropdown, new String[]{"Available", "Borrowed", "Used", "Out of Stock"}, mItem.getStatus(), s -> mItem.setStatus(s));
 
         // --- Tracking & Location ---
         mBarcodeField = v.findViewById(R.id.supply_barcode);
         mBarcodeField.setText(mItem.getBarcode());
         mBarcodeField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBarcode(s)));
 
-        mPropertyTagField = v.findViewById(R.id.supply_property_tag);
-        mPropertyTagField.setText(mItem.getPropertyTag());
-        mPropertyTagField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setPropertyTag(s)));
-
         mRoomDropdown = v.findViewById(R.id.supply_room);
         updateRoomList();
-
-        mLocationField = v.findViewById(R.id.supply_location);
-        mLocationField.setText(mItem.getLocation());
-        mLocationField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setLocation(s)));
 
         // --- Dates & Options ---
         mDateButton = v.findViewById(R.id.supply_date);
@@ -199,23 +189,9 @@ public class SupplyDetailFragment extends Fragment {
             updateDateButton();
         }));
 
-        mExpirationDateButton = v.findViewById(R.id.supply_expiration_date);
-        updateExpirationDateButton();
-        mExpirationDateButton.setOnClickListener(view -> showDatePicker("Expiration Date", 
-            mItem.getExpirationDate() != null ? mItem.getExpirationDate() : new Date(), date -> {
-                mItem.setExpirationDate(date);
-                updateExpirationDateButton();
-        }));
-
         mBorrowableSwitch = v.findViewById(R.id.supply_borrowable);
         mBorrowableSwitch.setChecked(mItem.isBorrowable());
-        mBorrowableSwitch.setOnCheckedChangeListener((b, isChecked) -> {
-            mItem.setBorrowable(isChecked);
-            updateLastUpdated();
-        });
-
-        mBorrowedSwitch = v.findViewById(R.id.supply_borrowed);
-        mBorrowedSwitch.setChecked(mItem.isBorrowed());
+        mBorrowableSwitch.setOnCheckedChangeListener((b, isChecked) -> mItem.setBorrowable(isChecked));
 
         // --- Media ---
         mPhotoButton = v.findViewById(R.id.supply_camera);
@@ -230,10 +206,17 @@ public class SupplyDetailFragment extends Fragment {
         });
         updatePhotoView();
 
-        mLastUpdatedTextView = v.findViewById(R.id.last_updated_status);
-        updateLastUpdated();
+        mSaveFab = v.findViewById(R.id.save_supply_fab);
+        mSaveFab.setOnClickListener(view -> saveNewItem());
 
         return v;
+    }
+
+    private void setupStaticDropdown(MaterialAutoCompleteTextView dropdown, String[] options, String currentSelection, java.util.function.Consumer<String> callback) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_dropdown_item_1line, options);
+        dropdown.setAdapter(adapter);
+        dropdown.setText(currentSelection, false);
+        dropdown.setOnItemClickListener((parent, view, position, id) -> callback.accept(options[position]));
     }
 
     private TextWatcher createSimpleTextWatcher(java.util.function.Consumer<String> action) {
@@ -241,7 +224,6 @@ public class SupplyDetailFragment extends Fragment {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
                 action.accept(s.toString());
-                updateLastUpdated();
             }
             @Override public void afterTextChanged(Editable s) {}
         };
@@ -251,12 +233,10 @@ public class SupplyDetailFragment extends Fragment {
         MaterialDatePicker<Long> datePicker = MaterialDatePicker.Builder.datePicker()
                 .setTitleText("Select " + title)
                 .setSelection(initialDate.getTime())
-                .setTheme(com.google.android.material.R.style.ThemeOverlay_Material3_MaterialCalendar)
                 .build();
         
         datePicker.addOnPositiveButtonClickListener(selection -> {
             callback.accept(new Date(selection));
-            updateLastUpdated();
         });
         datePicker.show(getParentFragmentManager(), "DATE_PICKER");
     }
@@ -310,7 +290,7 @@ public class SupplyDetailFragment extends Fragment {
                             if (success) { mItem.setCategory(newOption); updateCategoryList(); }
                         });
                     });
-                } else { mItem.setCategory(selection); updateLastUpdated(); }
+                } else { mItem.setCategory(selection); }
             });
         });
     }
@@ -331,7 +311,7 @@ public class SupplyDetailFragment extends Fragment {
                             if (success) { mItem.setRoom(newOption); updateRoomList(); }
                         });
                     });
-                } else { mItem.setRoom(selection); updateLastUpdated(); }
+                } else { mItem.setRoom(selection); }
             });
         });
     }
@@ -357,13 +337,8 @@ public class SupplyDetailFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
         MenuItem deleteItem = menu.findItem(R.id.delete_supply);
-        MenuItem saveItem = menu.findItem(R.id.save_supply);
         if (mIsNewItem) {
             if (deleteItem != null) deleteItem.setVisible(false);
-            if (saveItem != null) saveItem.setVisible(true);
-        } else {
-            if (deleteItem != null) deleteItem.setVisible(true);
-            if (saveItem != null) saveItem.setVisible(false);
         }
     }
 
@@ -371,7 +346,6 @@ public class SupplyDetailFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.delete_supply) { confirmDelete(); return true; }
-        else if (id == R.id.save_supply) { saveNewItem(); return true; }
         return super.onOptionsItemSelected(item);
     }
 
@@ -380,10 +354,16 @@ public class SupplyDetailFragment extends Fragment {
             Toast.makeText(getActivity(), "Please enter an item name", Toast.LENGTH_SHORT).show();
             return;
         }
-        SupplyLab.get(getActivity()).addSupply(mItem, result -> {
-            Toast.makeText(getActivity(), "Supply saved", Toast.LENGTH_SHORT).show();
+        if (mIsNewItem) {
+            SupplyLab.get(getActivity()).addSupply(mItem, result -> {
+                Toast.makeText(getActivity(), "Supply saved", Toast.LENGTH_SHORT).show();
+                getActivity().finish();
+            });
+        } else {
+            SupplyLab.get(getActivity()).updateSupply(mItem);
+            Toast.makeText(getActivity(), "Supply updated", Toast.LENGTH_SHORT).show();
             getActivity().finish();
-        });
+        }
     }
 
     private void confirmDelete() {
@@ -402,15 +382,6 @@ public class SupplyDetailFragment extends Fragment {
         mDateButton.setText("Date Added: " + dateFormat.format(mItem.getDate()));
     }
 
-    private void updateExpirationDateButton() {
-        if (mItem.getExpirationDate() == null) {
-            mExpirationDateButton.setText("Set Expiration Date (Optional)");
-        } else {
-            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
-            mExpirationDateButton.setText("Expires: " + dateFormat.format(mItem.getExpirationDate()));
-        }
-    }
-
     private void updatePhotoView() {
         if (mPhotoFile == null || !mPhotoFile.exists()) {
             mPhotoView.setImageDrawable(null);
@@ -418,11 +389,6 @@ public class SupplyDetailFragment extends Fragment {
             Bitmap bitmap = PictureUtils.getScaledBitmap(mPhotoFile.getPath(), getActivity());
             mPhotoView.setImageBitmap(bitmap);
         }
-    }
-
-    private void updateLastUpdated() {
-        String time = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date());
-        mLastUpdatedTextView.setText("System synced: " + time);
     }
 
     @Override
@@ -433,7 +399,6 @@ public class SupplyDetailFragment extends Fragment {
                     "com.example.schoolsupplyinventory.fileprovider", mPhotoFile);
             getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             updatePhotoView();
-            updateLastUpdated();
         }
     }
 }

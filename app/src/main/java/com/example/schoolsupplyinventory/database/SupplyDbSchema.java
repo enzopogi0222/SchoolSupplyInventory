@@ -10,17 +10,21 @@ public class SupplyDbSchema {
             public static final String BRAND = "brand";
             public static final String DATE = "date";
             public static final String EXPIRATION_DATE = "expiration_date";
-            public static final String BORROWED = "borrowed";
             public static final String CATEGORY = "category";
             public static final String SUPPLIER = "supplier";
-            public static final String BORROWER = "borrower";
             public static final String ROOM = "room";
             public static final String QUANTITY = "quantity";
             public static final String UNIT = "unit";
             public static final String LOCATION = "location";
             public static final String BARCODE = "barcode";
             public static final String PROPERTY_TAG = "property_tag";
+            public static final String DESCRIPTION = "description";
+            public static final String CONDITION = "condition";
+            public static final String STATUS = "status";
             public static final String IS_BORROWABLE = "is_borrowable";
+            // Keep for compatibility during migration if needed
+            public static final String BORROWED = "borrowed";
+            public static final String BORROWER = "borrower";
         }
     }
 

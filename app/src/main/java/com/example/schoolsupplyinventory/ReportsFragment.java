@@ -199,29 +199,31 @@ public class ReportsFragment extends Fragment {
         SupplyLab lab = SupplyLab.get(getActivity());
         lab.getItemsAsync(items -> {
             lab.getAllBorrowRecordsAsync(borrows -> {
-                // Export 1: Inventory List
-                StringBuilder csvInventory = new StringBuilder("ID,Name,Category,Quantity,Unit,Room,Supplier,Barcode\n");
+                // Export 1: Inventory List based on requested fields
+                StringBuilder csvInventory = new StringBuilder("Item ID,Item Name,Category,Quantity,Unit,Description,Condition,Status,Date Added\n");
+                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
                 for (SupplyItem item : items) {
                     csvInventory.append(item.getId()).append(",")
-                       .append(item.getName()).append(",")
-                       .append(item.getCategory()).append(",")
+                       .append(escapeCsv(item.getName())).append(",")
+                       .append(escapeCsv(item.getCategory())).append(",")
                        .append(item.getQuantity()).append(",")
-                       .append(item.getUnit()).append(",")
-                       .append(item.getRoom()).append(",")
-                       .append(item.getSupplier()).append(",")
-                       .append(item.getBarcode()).append("\n");
+                       .append(escapeCsv(item.getUnit())).append(",")
+                       .append(escapeCsv(item.getDescription())).append(",")
+                       .append(item.getCondition()).append(",")
+                       .append(item.getStatus()).append(",")
+                       .append(sdf.format(item.getDate())).append("\n");
                 }
                 saveFile("Inventory_List.csv", csvInventory.toString().getBytes());
 
                 // Export 2: Borrowing Records
                 StringBuilder csvBorrows = new StringBuilder("Item ID,Borrower,Quantity,Date Borrowed,Return Date,Status\n");
-                SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
+                SimpleDateFormat fullSdf = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
                 for (BorrowRecord record : borrows) {
                     csvBorrows.append(record.getItemId()).append(",")
-                            .append(record.getBorrowerName()).append(",")
+                            .append(escapeCsv(record.getBorrowerName())).append(",")
                             .append(record.getQuantity()).append(",")
-                            .append(sdf.format(record.getDateBorrowed())).append(",")
-                            .append(record.getActualReturnDate() != null ? sdf.format(record.getActualReturnDate()) : "N/A").append(",")
+                            .append(fullSdf.format(record.getDateBorrowed())).append(",")
+                            .append(record.getActualReturnDate() != null ? fullSdf.format(record.getActualReturnDate()) : "N/A").append(",")
                             .append(record.getStatus()).append("\n");
                 }
                 saveFile("Borrowing_History.csv", csvBorrows.toString().getBytes());
@@ -229,6 +231,14 @@ public class ReportsFragment extends Fragment {
                 Toast.makeText(getActivity(), "CSV reports exported to app folder", Toast.LENGTH_LONG).show();
             });
         });
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 
     private void exportToPDF() {
@@ -253,22 +263,22 @@ public class ReportsFragment extends Fragment {
             canvas.drawText("CURRENT INVENTORY SUMMARY", 50, y, paint);
             y += 25;
             paint.setFakeBoldText(false);
-            canvas.drawText("Item Name | Category | Stock | Location", 50, y, paint);
+            canvas.drawText("Item Name | Category | Stock | Status | Condition", 50, y, paint);
             y += 10;
             canvas.drawLine(50, y, 545, y, paint);
             y += 20;
             
-            for (int i = 0; i < Math.min(items.size(), 25); i++) {
+            for (int i = 0; i < Math.min(items.size(), 30); i++) {
                 SupplyItem item = items.get(i);
-                String line = String.format(Locale.getDefault(), "%s | %s | %d %s | %s", 
-                        item.getName(), item.getCategory(), item.getQuantity(), item.getUnit(), item.getRoom());
+                String line = String.format(Locale.getDefault(), "%s | %s | %d %s | %s | %s", 
+                        item.getName(), item.getCategory(), item.getQuantity(), item.getUnit(), item.getStatus(), item.getCondition());
                 canvas.drawText(line, 50, y, paint);
                 y += 20;
+                if (y > 800) break; // Simple page limit
             }
             
             document.finishPage(page);
             
-            // Add another page if needed, but for simplicity we'll save now
             File file = new File(requireContext().getExternalFilesDir(null), "Comprehensive_Report.pdf");
             try {
                 document.writeTo(new FileOutputStream(file));

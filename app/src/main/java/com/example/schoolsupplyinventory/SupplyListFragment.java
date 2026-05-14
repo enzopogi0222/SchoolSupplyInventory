@@ -14,6 +14,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -31,6 +32,7 @@ import com.google.android.material.textfield.TextInputEditText;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -38,7 +40,7 @@ import java.util.stream.Collectors;
 public class SupplyListFragment extends Fragment {
 
     private RecyclerView mSupplyRecyclerView;
-    private SupplyAdapter mAdapter;
+    private InventoryAdapter mAdapter;
     private ExtendedFloatingActionButton mAddSupplyFab;
     private TextInputEditText mSearchEditText;
     private ChipGroup mFilterChipGroup;
@@ -46,10 +48,24 @@ public class SupplyListFragment extends Fragment {
     private ShimmerFrameLayout mShimmerViewContainer;
     private View mEmptyStateView;
     private List<SupplyItem> mAllItems;
+    private String mSelectedCategory = null;
+    private OnBackPressedCallback mOnBackPressedCallback;
     
     private LruCache<String, Bitmap> mThumbnailCache;
     private final ExecutorService mImageExecutor = Executors.newFixedThreadPool(2);
     private final Handler mMainHandler = new Handler(Looper.getMainLooper());
+
+    private static final int TYPE_CATEGORY = 0;
+    private static final int TYPE_ITEM = 1;
+
+    private static class Category {
+        String name;
+        int count;
+        Category(String name, int count) {
+            this.name = name;
+            this.count = count;
+        }
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -64,6 +80,17 @@ public class SupplyListFragment extends Fragment {
                 return bitmap.getByteCount() / 1024;
             }
         };
+
+        mOnBackPressedCallback = new OnBackPressedCallback(false) {
+            @Override
+            public void handleOnBackPressed() {
+                if (mSelectedCategory != null) {
+                    mSelectedCategory = null;
+                    applyFilters();
+                }
+            }
+        };
+        requireActivity().getOnBackPressedDispatcher().addCallback(this, mOnBackPressedCallback);
     }
 
     @Override
@@ -151,11 +178,33 @@ public class SupplyListFragment extends Fragment {
                 .collect(Collectors.toList());
 
         if (mAdapter != null) {
-            mAdapter.setItems(filteredList);
+            if (mSelectedCategory == null) {
+                Map<String, List<SupplyItem>> grouped = filteredList.stream()
+                        .collect(Collectors.groupingBy(item -> 
+                            item.getCategory() != null ? item.getCategory() : "OTHER"
+                        ));
+                
+                List<Object> displayList = grouped.entrySet().stream()
+                        .map(entry -> new Category(entry.getKey(), entry.getValue().size()))
+                        .sorted((c1, c2) -> c1.name.compareToIgnoreCase(c2.name))
+                        .collect(Collectors.toList());
+                
+                mAdapter.setDisplayItems(displayList);
+                mOnBackPressedCallback.setEnabled(false);
+            } else {
+                List<Object> displayList = filteredList.stream()
+                        .filter(item -> {
+                            String cat = item.getCategory() != null ? item.getCategory() : "OTHER";
+                            return cat.equals(mSelectedCategory);
+                        })
+                        .collect(Collectors.toList());
+                
+                mAdapter.setDisplayItems(displayList);
+                mOnBackPressedCallback.setEnabled(true);
+            }
             mAdapter.notifyDataSetChanged();
+            mEmptyStateView.setVisibility(mAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
         }
-
-        mEmptyStateView.setVisibility(filteredList.isEmpty() ? View.VISIBLE : View.GONE);
     }
 
     private void createNewSupply() {
@@ -173,9 +222,15 @@ public class SupplyListFragment extends Fragment {
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
                 final int position = viewHolder.getAdapterPosition();
-                if (mAdapter == null || position >= mAdapter.mItems.size()) return;
+                if (mAdapter == null || position >= mAdapter.mDisplayItems.size()) return;
                 
-                final SupplyItem itemToDelete = mAdapter.mItems.get(position);
+                Object obj = mAdapter.mDisplayItems.get(position);
+                if (!(obj instanceof SupplyItem)) {
+                    mAdapter.notifyItemChanged(position);
+                    return;
+                }
+
+                final SupplyItem itemToDelete = (SupplyItem) obj;
 
                 new AlertDialog.Builder(getActivity(), R.style.Base_Theme_SupplyFlow)
                         .setTitle("Delete Item")
@@ -192,6 +247,12 @@ public class SupplyListFragment extends Fragment {
                         .setNegativeButton("Cancel", (dialog, which) -> mAdapter.notifyItemChanged(position))
                         .setOnCancelListener(dialog -> mAdapter.notifyItemChanged(position))
                         .show();
+            }
+
+            @Override
+            public int getSwipeDirs(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder) {
+                if (viewHolder instanceof CategoryHolder) return 0;
+                return super.getSwipeDirs(recyclerView, viewHolder);
             }
         };
 
@@ -220,15 +281,36 @@ public class SupplyListFragment extends Fragment {
 
             mAllItems = items;
             if (mAdapter == null) {
-                mAdapter = new SupplyAdapter(new ArrayList<>(mAllItems));
+                mAdapter = new InventoryAdapter(new ArrayList<>());
                 mSupplyRecyclerView.setAdapter(mAdapter);
-            } else {
-                mAdapter.setItems(new ArrayList<>(mAllItems));
-                mAdapter.notifyDataSetChanged();
             }
             applyFilters();
             if (mSwipeRefreshLayout != null) mSwipeRefreshLayout.setRefreshing(false);
         });
+    }
+
+    private class CategoryHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
+        private TextView mNameTextView, mCountTextView;
+        private Category mCategory;
+
+        public CategoryHolder(LayoutInflater inflater, ViewGroup parent) {
+            super(inflater.inflate(R.layout.list_item_category, parent, false));
+            itemView.setOnClickListener(this);
+            mNameTextView = itemView.findViewById(R.id.category_name);
+            mCountTextView = itemView.findViewById(R.id.category_count);
+        }
+
+        public void bind(Category category) {
+            mCategory = category;
+            mNameTextView.setText(category.name);
+            mCountTextView.setText(category.count + " items");
+        }
+
+        @Override
+        public void onClick(View view) {
+            mSelectedCategory = mCategory.name;
+            applyFilters();
+        }
     }
 
     private class SupplyHolder extends RecyclerView.ViewHolder implements View.OnClickListener {
@@ -311,19 +393,48 @@ public class SupplyListFragment extends Fragment {
         }
     }
 
-    private class SupplyAdapter extends RecyclerView.Adapter<SupplyHolder> {
-        private List<SupplyItem> mItems;
-        public SupplyAdapter(List<SupplyItem> items) { mItems = items; }
-        @NonNull @Override
-        public SupplyHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            return new SupplyHolder(LayoutInflater.from(getActivity()), parent);
+    private class InventoryAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+        private List<Object> mDisplayItems;
+
+        public InventoryAdapter(List<Object> items) {
+            mDisplayItems = items;
         }
+
         @Override
-        public void onBindViewHolder(@NonNull SupplyHolder holder, int position) {
-            holder.bind(mItems.get(position));
+        public int getItemViewType(int position) {
+            if (mDisplayItems.get(position) instanceof Category) {
+                return TYPE_CATEGORY;
+            }
+            return TYPE_ITEM;
         }
+
+        @NonNull
         @Override
-        public int getItemCount() { return mItems.size(); }
-        public void setItems(List<SupplyItem> items) { mItems = items; }
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            LayoutInflater inflater = LayoutInflater.from(getActivity());
+            if (viewType == TYPE_CATEGORY) {
+                return new CategoryHolder(inflater, parent);
+            } else {
+                return new SupplyHolder(inflater, parent);
+            }
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            if (holder instanceof CategoryHolder) {
+                ((CategoryHolder) holder).bind((Category) mDisplayItems.get(position));
+            } else {
+                ((SupplyHolder) holder).bind((SupplyItem) mDisplayItems.get(position));
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return mDisplayItems.size();
+        }
+
+        public void setDisplayItems(List<Object> items) {
+            mDisplayItems = items;
+        }
     }
 }

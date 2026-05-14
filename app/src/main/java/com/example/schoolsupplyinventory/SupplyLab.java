@@ -163,7 +163,7 @@ public class SupplyLab {
 
         int oldQty = item.getQuantity();
         item.setQuantity(oldQty - quantity);
-        item.setBorrowed(true);
+        item.setStatus("Borrowed");
         item.setBorrower(borrowerName);
         
         ContentValues itemValues = getContentValues(item);
@@ -216,10 +216,11 @@ public class SupplyLab {
         if (item != null) {
             List<BorrowRecord> activeBorrows = getActiveBorrowRecordsForItem(item.getId());
             if (activeBorrows.isEmpty()) {
-                item.setBorrowed(false);
+                item.setStatus("Available");
                 item.setBorrower(null);
             } else {
                 item.setBorrower(activeBorrows.get(0).getBorrowerName());
+                item.setStatus("Borrowed");
             }
             
             ContentValues itemValues = getContentValues(item);
@@ -582,7 +583,6 @@ public class SupplyLab {
         if (item.getExpirationDate() != null) {
             values.put(SupplyTable.Cols.EXPIRATION_DATE, item.getExpirationDate().getTime());
         }
-        values.put(SupplyTable.Cols.BORROWED, item.isBorrowed() ? 1 : 0);
         values.put(SupplyTable.Cols.CATEGORY, item.getCategory());
         values.put(SupplyTable.Cols.SUPPLIER, item.getSupplier());
         values.put(SupplyTable.Cols.BORROWER, item.getBorrower());
@@ -593,6 +593,11 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.BARCODE, item.getBarcode());
         values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
         values.put(SupplyTable.Cols.IS_BORROWABLE, item.isBorrowable() ? 1 : 0);
+        
+        values.put(SupplyTable.Cols.DESCRIPTION, item.getDescription());
+        values.put(SupplyTable.Cols.CONDITION, item.getCondition());
+        values.put(SupplyTable.Cols.STATUS, item.getStatus());
+
         return values;
     }
 

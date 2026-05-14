@@ -21,7 +21,6 @@ public class SupplyCursorWrapper extends CursorWrapper {
         String brand = getString(getColumnIndexOrThrow(SupplyTable.Cols.BRAND));
         long date = getLong(getColumnIndexOrThrow(SupplyTable.Cols.DATE));
         long expirationDate = getLong(getColumnIndexOrThrow(SupplyTable.Cols.EXPIRATION_DATE));
-        int isBorrowed = getInt(getColumnIndexOrThrow(SupplyTable.Cols.BORROWED));
         String categoryName = getString(getColumnIndexOrThrow(SupplyTable.Cols.CATEGORY));
         String supplier = getString(getColumnIndexOrThrow(SupplyTable.Cols.SUPPLIER));
         String borrower = getString(getColumnIndexOrThrow(SupplyTable.Cols.BORROWER));
@@ -32,6 +31,10 @@ public class SupplyCursorWrapper extends CursorWrapper {
         String barcode = getString(getColumnIndexOrThrow(SupplyTable.Cols.BARCODE));
         String propertyTag = getString(getColumnIndexOrThrow(SupplyTable.Cols.PROPERTY_TAG));
         int isBorrowable = getInt(getColumnIndexOrThrow(SupplyTable.Cols.IS_BORROWABLE));
+        
+        String description = getString(getColumnIndexOrThrow(SupplyTable.Cols.DESCRIPTION));
+        String condition = getString(getColumnIndexOrThrow(SupplyTable.Cols.CONDITION));
+        String status = getString(getColumnIndexOrThrow(SupplyTable.Cols.STATUS));
 
         SupplyItem item = new SupplyItem(UUID.fromString(uuidString));
         item.setName(title);
@@ -40,17 +43,20 @@ public class SupplyCursorWrapper extends CursorWrapper {
         if (expirationDate != 0) {
             item.setExpirationDate(new Date(expirationDate));
         }
-        item.setBorrowed(isBorrowed != 0);
         item.setSupplier(supplier);
         item.setBorrower(borrower);
         item.setQuantity(quantity);
-        item.setUnit(unit != null ? unit : "pcs");
+        item.setUnit(unit != null ? unit : "Piece");
         item.setLocation(location);
         item.setBarcode(barcode);
-        item.setCategory(categoryName != null ? categoryName : "OTHER");
+        item.setCategory(categoryName != null ? categoryName : "OFFICE SUPPLIES");
         item.setRoom(roomName != null ? roomName : "ITE OFFICE");
         item.setPropertyTag(propertyTag != null ? propertyTag : "");
         item.setBorrowable(isBorrowable != 0);
+        
+        item.setDescription(description != null ? description : "");
+        item.setCondition(condition != null ? condition : "New");
+        item.setStatus(status != null ? status : "Available");
 
         return item;
     }

@@ -10,7 +10,6 @@ public class SupplyItem {
     private String mBrand;
     private Date mDate; // Date Added
     private Date mExpirationDate;
-    private boolean mBorrowed;
     private String mCategory;
     private String mSupplier;
     private String mBorrower;
@@ -22,7 +21,11 @@ public class SupplyItem {
     private String mBarcode;
     private String mPropertyTag;
     private boolean mIsBorrowable;
-    private boolean mIsDamaged;
+    
+    // New fields based on user request
+    private String mDescription;
+    private String mCondition; // New, Good, Damaged, Old
+    private String mStatus; // Available, Borrowed, Used, Out of Stock
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -31,15 +34,17 @@ public class SupplyItem {
     public SupplyItem(UUID id) {
         mId = id;
         mDate = new Date();
-        mCategory = "STATIONERY";
+        mCategory = "OFFICE SUPPLIES";
         mRoom = "ITE OFFICE";
         mQuantity = 1;
-        mUnit = "pcs";
+        mUnit = "Piece";
         mLocation = "";
         mPropertyTag = "";
         mBarcode = "";
         mIsBorrowable = true;
-        mIsDamaged = false;
+        mCondition = "New";
+        mStatus = "Available";
+        mDescription = "";
     }
 
     public UUID getId() {
@@ -79,11 +84,7 @@ public class SupplyItem {
     }
 
     public boolean isBorrowed() {
-        return mBorrowed;
-    }
-
-    public void setBorrowed(boolean borrowed) {
-        mBorrowed = borrowed;
+        return "Borrowed".equalsIgnoreCase(mStatus);
     }
 
     public boolean isBorrowable() {
@@ -171,10 +172,30 @@ public class SupplyItem {
     }
 
     public boolean isDamaged() {
-        return mIsDamaged;
+        return "Damaged".equalsIgnoreCase(mCondition);
     }
 
-    public void setDamaged(boolean damaged) {
-        mIsDamaged = damaged;
+    public String getDescription() {
+        return mDescription;
+    }
+
+    public void setDescription(String description) {
+        mDescription = description;
+    }
+
+    public String getCondition() {
+        return mCondition;
+    }
+
+    public void setCondition(String condition) {
+        mCondition = condition;
+    }
+
+    public String getStatus() {
+        return mStatus;
+    }
+
+    public void setStatus(String status) {
+        mStatus = status;
     }
 }
