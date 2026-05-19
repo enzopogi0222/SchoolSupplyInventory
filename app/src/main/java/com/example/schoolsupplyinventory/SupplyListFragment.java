@@ -118,17 +118,11 @@ public class SupplyListFragment extends Fragment {
         });
 
         mMainFilterChipGroup = view.findViewById(R.id.main_filter_chip_group);
-        mSearchEditText.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { applyFilters(); }
-            @Override public void afterTextChanged(Editable s) {}
-        });
-
-        mMainFilterChipGroup = view.findViewById(R.id.main_filter_chip_group);
         mSubFilterChipGroup = view.findViewById(R.id.sub_filter_chip_group);
         mSubFilterScroll = view.findViewById(R.id.sub_filter_scroll);
 
         mMainFilterChipGroup.setOnCheckedStateChangeListener((group, checkedIds) -> {
+            mSelectedCategory = null; 
             updateSubFilterVisibility();
             applyFilters();
         });
@@ -165,23 +159,18 @@ public class SupplyListFragment extends Fragment {
         
         if (checkedId == R.id.chip_main_all) {
             mSubFilterScroll.setVisibility(View.GONE);
-        } else if (checkedId == R.id.chip_main_consumable) {
+        } else {
             mSubFilterScroll.setVisibility(View.VISIBLE);
+            boolean isConsumable = (checkedId == R.id.chip_main_consumable);
             mSubFilterChipGroup.findViewById(R.id.chip_sub_available).setVisibility(View.VISIBLE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_used).setVisibility(View.VISIBLE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_low_stock).setVisibility(View.VISIBLE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_borrowed).setVisibility(View.GONE);
-        } else if (checkedId == R.id.chip_main_borrowable) {
-            mSubFilterScroll.setVisibility(View.VISIBLE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_available).setVisibility(View.VISIBLE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_borrowed).setVisibility(View.VISIBLE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_used).setVisibility(View.GONE);
-            mSubFilterChipGroup.findViewById(R.id.chip_sub_low_stock).setVisibility(View.GONE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_used).setVisibility(isConsumable ? View.VISIBLE : View.GONE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_low_stock).setVisibility(isConsumable ? View.VISIBLE : View.GONE);
+            mSubFilterChipGroup.findViewById(R.id.chip_sub_borrowed).setVisibility(isConsumable ? View.GONE : View.VISIBLE);
         }
     }
 
     private void applyFilters() {
-        if (mAllItems == null) return;
+        if (mAllItems == null || mAdapter == null) return;
 
         String query = mSearchEditText.getText().toString().toLowerCase();
         int mainCheckedId = mMainFilterChipGroup.getCheckedChipId();
@@ -191,7 +180,6 @@ public class SupplyListFragment extends Fragment {
                 .filter(item -> {
                     String name = item.getName() != null ? item.getName().toLowerCase() : "";
                     String category = item.getCategory() != null ? item.getCategory().toLowerCase() : "";
-                    
                     boolean matchesQuery = name.contains(query) || category.contains(query);
 
                     boolean matchesMain = true;
@@ -213,31 +201,41 @@ public class SupplyListFragment extends Fragment {
                             matchesSub = SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType()) && item.getAvailableQuantity() <= 5 && item.getAvailableQuantity() > 0;
                         }
                     }
-
                     return matchesQuery && matchesMain && matchesSub;
                 })
                 .collect(Collectors.toList());
 
-        if (mAdapter != null) {
-            if (mSelectedCategory == null) {
-                Map<String, List<SupplyItem>> grouped = filteredList.stream()
-                        .collect(Collectors.groupingBy(item -> item.getCategory() != null ? item.getCategory() : "OTHER"));
-                List<Object> displayList = grouped.entrySet().stream()
-                        .map(entry -> new Category(entry.getKey(), entry.getValue().size()))
-                        .sorted((c1, c2) -> c1.name.compareToIgnoreCase(c2.name))
-                        .collect(Collectors.toList());
-                mAdapter.setDisplayItems(displayList);
-                mOnBackPressedCallback.setEnabled(false);
-            } else {
-                List<Object> displayList = filteredList.stream()
+        boolean isSearching = !query.isEmpty();
+        boolean isMainFiltered = mainCheckedId == R.id.chip_main_consumable || mainCheckedId == R.id.chip_main_borrowable;
+
+        // Determination logic: Show items directly for staff or when searching/filtering.
+        // Show categories for admin when in "All Items" view with no search.
+        boolean showItemsDirectly = !mIsAdmin || isSearching || isMainFiltered || mSelectedCategory != null;
+
+        if (!showItemsDirectly) {
+            Map<String, List<SupplyItem>> grouped = filteredList.stream()
+                    .collect(Collectors.groupingBy(item -> item.getCategory() != null ? item.getCategory() : "OTHER"));
+            List<Object> displayList = grouped.entrySet().stream()
+                    .map(entry -> new Category(entry.getKey(), entry.getValue().size()))
+                    .sorted((c1, c2) -> c1.name.compareToIgnoreCase(c2.name))
+                    .collect(Collectors.toList());
+            mAdapter.setDisplayItems(displayList);
+            mOnBackPressedCallback.setEnabled(false);
+        } else {
+            List<SupplyItem> itemsToShow;
+            if (mSelectedCategory != null) {
+                itemsToShow = filteredList.stream()
                         .filter(item -> mSelectedCategory.equals(item.getCategory()))
                         .collect(Collectors.toList());
-                mAdapter.setDisplayItems(displayList);
-                mOnBackPressedCallback.setEnabled(true);
+            } else {
+                itemsToShow = filteredList;
             }
-            mAdapter.notifyDataSetChanged();
-            mEmptyStateView.setVisibility(mAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
+            mAdapter.setDisplayItems(new ArrayList<>(itemsToShow));
+            mOnBackPressedCallback.setEnabled(mSelectedCategory != null);
         }
+        
+        mAdapter.notifyDataSetChanged();
+        mEmptyStateView.setVisibility(mAdapter.getItemCount() == 0 ? View.VISIBLE : View.GONE);
     }
 
     private void setupItemTouchHelper() {
@@ -319,7 +317,13 @@ public class SupplyListFragment extends Fragment {
             mItem = item;
             mTitle.setText(item.getName());
             mCategory.setText(item.getCategory() + " • " + item.getItemType().toUpperCase());
-            mQuantity.setText("Available: " + item.getAvailableQuantity() + " / Total: " + item.getTotalQuantity() + " " + item.getUnit());
+            
+            mQuantity.setVisibility(View.VISIBLE);
+            if (mIsAdmin) {
+                mQuantity.setText("Available: " + item.getAvailableQuantity() + " / Total: " + item.getTotalQuantity() + " " + item.getUnit());
+            } else {
+                mQuantity.setText("Available: " + item.getAvailableQuantity() + " " + item.getUnit());
+            }
             
             int color = R.color.color_success;
             if (item.getAvailableQuantity() == 0) {

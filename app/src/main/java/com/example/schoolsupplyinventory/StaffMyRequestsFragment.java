@@ -9,8 +9,10 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -27,12 +29,14 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class StaffMyRequestsFragment extends Fragment {
 
     private RecyclerView mRecyclerView;
     private TextView mEmptyView;
+    private StaffRequestRowAdapter mAdapter;
     private static final SimpleDateFormat DATE_FMT = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
 
     @Override
@@ -44,8 +48,48 @@ public class StaffMyRequestsFragment extends Fragment {
         mRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
 
         v.findViewById(R.id.btn_staff_new_request).setOnClickListener(b -> showNewRequestBottomSheet());
+        
+        View clearBtn = v.findViewById(R.id.btn_clear_requests);
+        if (clearBtn != null) {
+            clearBtn.setOnClickListener(v1 -> {
+                new AlertDialog.Builder(requireContext())
+                        .setTitle("Clear Request History")
+                        .setMessage("Are you sure you want to clear all your request history?")
+                        .setPositiveButton("Clear", (dialog, which) -> {
+                            SupplyLab lab = SupplyLab.get(requireContext());
+                            lab.clearRequestsForUserAsync(lab.getCurrentUser(), result -> reload());
+                        })
+                        .setNegativeButton("Cancel", null)
+                        .show();
+            });
+        }
+
+        setupSwipeToDelete();
 
         return v;
+    }
+
+    private void setupSwipeToDelete() {
+        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                if (mAdapter != null) {
+                    SupplyRequest request = mAdapter.mList.get(position);
+                    SupplyLab.get(getActivity()).deleteRequestAsync(request.getId(), result -> {
+                        mAdapter.mList.remove(position);
+                        mAdapter.notifyItemRemoved(position);
+                        if (mAdapter.mList.isEmpty()) mEmptyView.setVisibility(View.VISIBLE);
+                    });
+                }
+            }
+        };
+        new ItemTouchHelper(swipeCallback).attachToRecyclerView(mRecyclerView);
     }
 
     @Override
@@ -65,7 +109,8 @@ public class StaffMyRequestsFragment extends Fragment {
             list = new ArrayList<>();
         }
         mEmptyView.setVisibility(list.isEmpty() ? View.VISIBLE : View.GONE);
-        mRecyclerView.setAdapter(new StaffRequestRowAdapter(list));
+        mAdapter = new StaffRequestRowAdapter(list);
+        mRecyclerView.setAdapter(mAdapter);
     }
 
     private void showNewRequestBottomSheet() {
@@ -226,7 +271,6 @@ public class StaffMyRequestsFragment extends Fragment {
 
             String status = r.getStatus() != null ? r.getStatus() : "";
             
-            // Customize status label for returns
             if (SupplyRequest.TYPE_RETURN.equals(r.getRequestType()) && SupplyRequest.STATUS_APPROVED.equals(status)) {
                 h.status.setText("RETURNED APPROVED");
             } else {

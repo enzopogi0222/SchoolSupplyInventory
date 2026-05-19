@@ -17,10 +17,10 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.RequestTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.RoomTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.SupplyTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
-import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -131,9 +131,6 @@ public class SupplyLab {
         });
     }
 
-    /**
-     * Applies a consumable deduction inside an active DB transaction.
-     */
     private boolean applyConsumeInTransaction(SupplyItem item, int quantity) {
         if (item == null || !SupplyItem.TYPE_CONSUMABLE.equalsIgnoreCase(item.getItemType()) || item.getAvailableQuantity() < quantity) {
             return false;
@@ -147,9 +144,6 @@ public class SupplyLab {
         return true;
     }
 
-    /**
-     * Applies a borrow inside an active DB transaction.
-     */
     private boolean applyBorrowInTransaction(SupplyItem item, UUID itemId, String borrowerName, int quantity, long dateBorrowed, long expectedReturnDate, String unitId) {
         if (item == null || !SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(item.getItemType()) || item.getAvailableQuantity() < quantity) {
             return false;
@@ -177,9 +171,6 @@ public class SupplyLab {
         return true;
     }
 
-    /**
-     * Applies a return inside an active DB transaction.
-     */
     private boolean applyReturnInTransaction(SupplyItem item, BorrowRecord record, int returnQuantity) {
         if (item != null) {
             item.setAvailableQuantity(item.getAvailableQuantity() + returnQuantity);
@@ -276,7 +267,9 @@ public class SupplyLab {
     public void getItemsAsync(Callback<List<SupplyItem>> callback) {
         mExecutor.execute(() -> {
             List<SupplyItem> items = getItems();
-            mMainHandler.post(() -> callback.onComplete(items));
+            List<SupplyItem> sortedList = new ArrayList<>(items);
+            Collections.sort(sortedList, (o1, o2) -> o1.getName().compareTo(o2.getName()));
+            mMainHandler.post(() -> callback.onComplete(sortedList));
         });
     }
 
@@ -323,6 +316,16 @@ public class SupplyLab {
         values.put(SupplyTable.Cols.ROOM, item.getRoom());
         values.put(SupplyTable.Cols.PROPERTY_TAG, item.getPropertyTag());
         values.put(SupplyTable.Cols.UNIT_IDENTIFIERS, item.getUnitIdentifiers());
+        values.put(SupplyTable.Cols.SUPPLIER, item.getSupplier());
+        values.put(SupplyTable.Cols.UNIT_PRICE, item.getUnitPrice());
+        values.put(SupplyTable.Cols.REORDER_LEVEL, item.getReorderLevel());
+        values.put(SupplyTable.Cols.REMARKS, item.getRemarks());
+        values.put(SupplyTable.Cols.LOCATION, item.getLocation());
+        if (item.getExpirationDate() != null) {
+            values.put(SupplyTable.Cols.EXPIRATION_DATE, item.getExpirationDate().getTime());
+        } else {
+            values.put(SupplyTable.Cols.EXPIRATION_DATE, 0);
+        }
         return values;
     }
 
@@ -355,6 +358,33 @@ public class SupplyLab {
         });
     }
 
+    public void clearHistoryAsync(Callback<Void> callback) {
+        mExecutor.execute(() -> {
+            mDatabase.delete(HistoryTable.NAME, null, null);
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
+        });
+    }
+
+    public void clearHistoryForUserAsync(String email, Callback<Void> callback) {
+        mExecutor.execute(() -> {
+            mDatabase.delete(HistoryTable.NAME, HistoryTable.Cols.USER + " = ?", new String[]{email});
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
+        });
+    }
+
+    public void deleteHistoryRecordAsync(UUID id, Callback<Void> callback) {
+        mExecutor.execute(() -> {
+            mDatabase.delete(HistoryTable.NAME, HistoryTable.Cols.UUID + " = ?", new String[]{id.toString()});
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
+        });
+    }
+
     private HistoryRecord getHistoryRecordFromCursor(Cursor cursor) {
         HistoryRecord record = new HistoryRecord(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.UUID))));
         record.setItemId(UUID.fromString(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.ITEM_ID))));
@@ -364,6 +394,24 @@ public class SupplyLab {
         record.setTimestamp(new Date(cursor.getLong(cursor.getColumnIndexOrThrow(HistoryTable.Cols.TIMESTAMP))));
         record.setDetails(cursor.getString(cursor.getColumnIndexOrThrow(HistoryTable.Cols.DETAILS)));
         return record;
+    }
+
+    public void deleteRequestAsync(UUID requestId, Callback<Void> callback) {
+        mExecutor.execute(() -> {
+            mDatabase.delete(RequestTable.NAME, RequestTable.Cols.UUID + " = ?", new String[]{requestId.toString()});
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
+        });
+    }
+
+    public void clearRequestsForUserAsync(String email, Callback<Void> callback) {
+        mExecutor.execute(() -> {
+            mDatabase.delete(RequestTable.NAME, RequestTable.Cols.REQUESTER_NAME + " = ?", new String[]{email});
+            if (callback != null) {
+                mMainHandler.post(() -> callback.onComplete(null));
+            }
+        });
     }
 
     public List<BorrowRecord> getAllBorrowRecords() {

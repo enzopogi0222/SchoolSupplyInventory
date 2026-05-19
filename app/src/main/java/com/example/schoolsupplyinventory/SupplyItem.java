@@ -22,18 +22,21 @@ public class SupplyItem {
     private String mUnit;
     private String mDescription;
     private String mCondition; // New, Good, Damaged, Old
-    private String mStatus; // Available, Borrowed, Used, Out of Stock
+    private String mStatus; // Available, Low Stock, Out of Stock, Damaged
     private Date mDateAdded;
-    private String mUnitIdentifiers; // Comma-separated unique IDs for each piece
+    private String mUnitIdentifiers;
     
-    // Additional fields from previous versions that might still be useful
     private String mBrand;
     private String mBarcode;
     private String mPropertyTag;
-    private String mRoom;
+    private String mRoom; // Location / Storage Area
     private String mLocation;
     private String mSupplier;
     private Date mExpirationDate;
+    
+    private double mUnitPrice;
+    private int mReorderLevel;
+    private String mRemarks;
 
     public SupplyItem() {
         this(UUID.randomUUID());
@@ -53,6 +56,9 @@ public class SupplyItem {
         mStatus = "Available";
         mDescription = "";
         mUnitIdentifiers = "";
+        mUnitPrice = 0.0;
+        mReorderLevel = 0;
+        mRemarks = "";
     }
 
     public UUID getId() {
@@ -170,7 +176,6 @@ public class SupplyItem {
         return new ArrayList<>(Arrays.asList(mUnitIdentifiers.split("\\s*,\\s*")));
     }
 
-    // Legacy/Compatibility Getters and Setters
     public int getQuantity() {
         return mAvailableQuantity;
     }
@@ -183,13 +188,24 @@ public class SupplyItem {
     public void setPropertyTag(String propertyTag) { mPropertyTag = propertyTag; }
     public String getRoom() { return mRoom; }
     public void setRoom(String room) { mRoom = room; }
-    public String mLocation() { return mLocation; }
+    public String getLocation() { return mLocation; }
     public void setLocation(String location) { mLocation = location; }
     public String getSupplier() { return mSupplier; }
     public void setSupplier(String supplier) { mSupplier = supplier; }
     public Date getExpirationDate() { return mExpirationDate; }
     public void setExpirationDate(Date expirationDate) { mExpirationDate = expirationDate; }
     
+    public double getUnitPrice() { return mUnitPrice; }
+    public void setUnitPrice(double unitPrice) { mUnitPrice = unitPrice; }
+    public int getReorderLevel() { return mReorderLevel; }
+    public void setReorderLevel(int reorderLevel) { mReorderLevel = reorderLevel; }
+    public String getRemarks() { return mRemarks; }
+    public void setRemarks(String remarks) { mRemarks = remarks; }
+
+    public double getTotalValue() {
+        return mTotalQuantity * mUnitPrice;
+    }
+
     public String getPhotoFilename() {
         return "IMG_" + getId().toString() + ".jpg";
     }

@@ -22,6 +22,7 @@
 
             <!-- Header Photo Card -->
             <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_photo"
                 android:layout_width="match_parent"
                 android:layout_height="220dp"
                 android:layout_marginBottom="24dp"
@@ -62,10 +63,12 @@
 
             <!-- General Info Card -->
             <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.CardView"
+                android:id="@+id/card_general_info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -81,18 +84,14 @@
                         android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/supply_barcode_layout"
+                        android:id="@+id/supply_item_id_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Item ID / Barcode"
+                        android:hint="Item ID / Product ID"
                         android:layout_marginBottom="16dp"
-                        app:endIconMode="custom"
-                        app:endIconDrawable="@android:drawable/ic_menu_camera"
-                        app:endIconContentDescription="Scan Barcode"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/supply_barcode"
+                            android:id="@+id/supply_item_id"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="text" />
@@ -104,7 +103,6 @@
                         android:hint="Item Name"
                         android:layout_marginBottom="16dp"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/supply_title"
                             android:layout_width="match_parent"
@@ -118,7 +116,6 @@
                         android:hint="Category"
                         android:layout_marginBottom="16dp"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/supply_category"
                             android:layout_width="match_parent"
@@ -127,34 +124,101 @@
                     </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/supply_type_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Item Type"
+                        android:hint="Description"
                         android:layout_marginBottom="16dp"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/supply_type"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/supply_description"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="none" />
+                            android:inputType="textMultiLine"
+                            android:minLines="2" />
                     </com.google.android.material.textfield.TextInputLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Staff Actions Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_staff_actions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                android:visibility="gone"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Actions"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:layout_marginBottom="16dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_request_borrow"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp"
+                        android:text="Request to Borrow"
+                        android:visibility="gone"
+                        app:icon="@android:drawable/ic_menu_send" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_request_consume"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Request to Use"
+                        android:visibility="gone"
+                        app:icon="@android:drawable/ic_menu_delete" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Stock & Pricing Card -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_stock_pricing"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Stock &amp; Pricing"
+                        android:textAppearance="?attr/textAppearanceTitleMedium"
+                        android:layout_marginBottom="16dp" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:layout_marginBottom="16dp">
-
                         <com.google.android.material.textfield.TextInputLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:hint="Total Quantity"
+                            android:hint="Quantity / Stock"
                             android:layout_marginEnd="8dp"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
                             <com.google.android.material.textfield.TextInputEditText
                                 android:id="@+id/supply_quantity"
                                 android:layout_width="match_parent"
@@ -168,7 +232,6 @@
                             android:layout_weight="1"
                             android:hint="Unit"
                             style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
                             <com.google.android.material.textfield.MaterialAutoCompleteTextView
                                 android:id="@+id/supply_unit"
                                 android:layout_width="match_parent"
@@ -177,47 +240,66 @@
                         </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/supply_unit_identifiers_layout"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Unit Identifiers (Comma-separated)"
-                        android:layout_marginBottom="16dp"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-                        app:helperText="Unique IDs for each piece (e.g. SN001, SN002)">
-
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/supply_unit_identifiers"
-                            android:layout_width="match_parent"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="16dp">
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:inputType="textMultiLine" />
-                    </com.google.android.material.textfield.TextInputLayout>
+                            android:layout_weight="1"
+                            android:hint="Unit Price"
+                            android:layout_marginEnd="8dp"
+                            app:prefixText="₱"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/supply_unit_price"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberDecimal" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="Total Value"
+                            app:prefixText="₱"
+                            style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/supply_total_value"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:enabled="false"
+                                android:inputType="none" />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Description"
+                        android:hint="Reorder Level"
                         android:layout_marginBottom="8dp"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
-
                         <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/supply_description"
+                            android:id="@+id/supply_reorder_level"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="textMultiLine"
-                            android:minLines="2"
-                            android:gravity="top" />
+                            android:inputType="number" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Condition & Status Card -->
+            <!-- Logistics Card -->
             <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.CardView"
+                android:id="@+id/card_logistics"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -228,19 +310,31 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Condition &amp; Status"
+                        android:text="Logistics &amp; Status"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:layout_marginBottom="16dp" />
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Condition"
+                        android:hint="Supplier"
+                        android:layout_marginBottom="16dp"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/supply_supplier"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textCapWords" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="Location / Storage Area"
                         android:layout_marginBottom="16dp"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/supply_condition"
+                            android:id="@+id/supply_room"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:inputType="none" />
@@ -250,9 +344,8 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:hint="Status"
-                        android:layout_marginBottom="8dp"
+                        android:layout_marginBottom="16dp"
                         style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
                         <com.google.android.material.textfield.MaterialAutoCompleteTextView
                             android:id="@+id/supply_status"
                             android:layout_width="match_parent"
@@ -260,15 +353,26 @@
                             android:inputType="none" />
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/supply_expiration_date"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Expiration Date"
+                        app:icon="@android:drawable/ic_menu_today"
+                        android:layout_marginBottom="8dp" />
+
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Stock Information Card -->
+            <!-- Advanced Card -->
             <com.google.android.material.card.MaterialCardView
-                style="@style/Widget.App.CardView"
+                android:id="@+id/card_advanced"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp">
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -279,53 +383,38 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Stock Information"
+                        android:text="Advanced Options"
                         android:textAppearance="?attr/textAppearanceTitleMedium"
                         android:layout_marginBottom="16dp" />
 
-                    <LinearLayout
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/supply_barcode_layout"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginBottom="8dp">
-
-                        <TextView
-                            android:id="@+id/available_stock_display"
-                            android:layout_width="0dp"
+                        android:hint="Barcode / QR Code"
+                        android:layout_marginBottom="16dp"
+                        app:endIconMode="custom"
+                        app:endIconDrawable="@android:drawable/ic_menu_camera"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/supply_barcode"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Available: 0"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                        <TextView
-                            android:id="@+id/borrowed_stock_display"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Borrowed: 0"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
-
-                        <TextView
-                            android:id="@+id/used_stock_display"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="Used: 0"
-                            android:textAppearance="?attr/textAppearanceBodyMedium" />
-                    </LinearLayout>
+                            android:inputType="text" />
+                    </com.google.android.material.textfield.TextInputLayout>
 
                     <com.google.android.material.textfield.TextInputLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="Room / Department"
+                        android:hint="Remarks / Notes"
                         android:layout_marginBottom="8dp"
-                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
-
-                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                            android:id="@+id/supply_room"
+                        style="@style/Widget.Material3.TextInputLayout.OutlinedBox">
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/supply_remarks"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:inputType="none" />
+                            android:inputType="textMultiLine"
+                            android:minLines="2" />
                     </com.google.android.material.textfield.TextInputLayout>
 
                 </LinearLayout>

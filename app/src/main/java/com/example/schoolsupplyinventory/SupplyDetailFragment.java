@@ -30,6 +30,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 import androidx.fragment.app.Fragment;
 
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -40,6 +41,10 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -55,6 +60,7 @@ public class SupplyDetailFragment extends Fragment {
     private static final int REQUEST_PHOTO = 3;
     private static final int REQUEST_CAMERA_PERMISSION = 4;
     private static final int REQUEST_BARCODE_SCAN = 5;
+    private static final int REQUEST_GALLERY = 6;
     private static final String ADD_NEW_OPTION = "+ ADD NEW";
 
     private SupplyItem mItem;
@@ -62,25 +68,38 @@ public class SupplyDetailFragment extends Fragment {
     private boolean mIsNewItem = false;
     private boolean mIsAdmin = true;
     
-    private TextInputLayout mBarcodeLayout;
     private TextInputEditText mTitleField;
     private TextInputEditText mQuantityField;
     private TextInputEditText mBarcodeField;
     private TextInputEditText mDescriptionField;
-    private TextInputEditText mUnitIdentifiersField;
+    private TextInputEditText mUnitPriceField;
+    private TextInputEditText mTotalValueField;
+    private TextInputEditText mReorderLevelField;
+    private TextInputEditText mSupplierField;
+    private TextInputEditText mRemarksField;
+    private TextInputEditText mProductIdField;
+    
     private MaterialAutoCompleteTextView mUnitDropdown;
     private MaterialAutoCompleteTextView mCategoryDropdown;
-    private MaterialAutoCompleteTextView mTypeDropdown;
-    private MaterialAutoCompleteTextView mConditionDropdown;
     private MaterialAutoCompleteTextView mStatusDropdown;
     private MaterialAutoCompleteTextView mRoomDropdown;
+    
     private MaterialButton mDateButton;
+    private MaterialButton mExpirationDateButton;
     private FloatingActionButton mPhotoButton;
     private ExtendedFloatingActionButton mSaveFab;
     private ImageView mPhotoView;
     private View mLoadingOverlay;
     
-    private TextView mAvailableStockText, mBorrowedStockText, mUsedStockText;
+    private TextInputLayout mBarcodeLayout;
+
+    // Staff action views
+    private View mStaffActionsCard;
+    private MaterialButton mRequestBorrowBtn;
+    private MaterialButton mRequestConsumeBtn;
+    private View mStockPricingCard;
+    private View mLogisticsCard;
+    private View mAdvancedCard;
 
     public static SupplyDetailFragment newInstance(UUID itemId) {
         Bundle args = new Bundle();
@@ -98,7 +117,7 @@ public class SupplyDetailFragment extends Fragment {
         super.onCreate(savedInstanceState);
         setHasOptionsMenu(true);
         
-        mIsAdmin = "ADMIN".equals(getActivity().getSharedPreferences("SupplyFlow", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN"));
+        mIsAdmin = "ADMIN".equals(getActivity().getSharedPreferences("InventoSchool", Context.MODE_PRIVATE).getString("USER_ROLE", "ADMIN"));
         
         UUID itemId = null;
         if (savedInstanceState != null && savedInstanceState.containsKey(SAVED_ITEM_ID)) {
@@ -148,25 +167,38 @@ public class SupplyDetailFragment extends Fragment {
 
         mLoadingOverlay = v.findViewById(R.id.loading_overlay);
         
-        mBarcodeLayout = v.findViewById(R.id.supply_barcode_layout);
-        mBarcodeField = v.findViewById(R.id.supply_barcode);
+        mProductIdField = v.findViewById(R.id.supply_item_id);
         mTitleField = v.findViewById(R.id.supply_title);
         mCategoryDropdown = v.findViewById(R.id.supply_category);
-        mTypeDropdown = v.findViewById(R.id.supply_type);
+        mDescriptionField = v.findViewById(R.id.supply_description);
+        
         mQuantityField = v.findViewById(R.id.supply_quantity);
         mUnitDropdown = v.findViewById(R.id.supply_unit);
-        mUnitIdentifiersField = v.findViewById(R.id.supply_unit_identifiers);
-        mDescriptionField = v.findViewById(R.id.supply_description);
-        mConditionDropdown = v.findViewById(R.id.supply_condition);
-        mStatusDropdown = v.findViewById(R.id.supply_status);
-        mAvailableStockText = v.findViewById(R.id.available_stock_display);
-        mBorrowedStockText = v.findViewById(R.id.borrowed_stock_display);
-        mUsedStockText = v.findViewById(R.id.used_stock_display);
+        mUnitPriceField = v.findViewById(R.id.supply_unit_price);
+        mTotalValueField = v.findViewById(R.id.supply_total_value);
+        mReorderLevelField = v.findViewById(R.id.supply_reorder_level);
+        
+        mSupplierField = v.findViewById(R.id.supply_supplier);
         mRoomDropdown = v.findViewById(R.id.supply_room);
+        mStatusDropdown = v.findViewById(R.id.supply_status);
+        mExpirationDateButton = v.findViewById(R.id.supply_expiration_date);
+        
+        mBarcodeLayout = v.findViewById(R.id.supply_barcode_layout);
+        mBarcodeField = v.findViewById(R.id.supply_barcode);
+        mRemarksField = v.findViewById(R.id.supply_remarks);
+        
         mDateButton = v.findViewById(R.id.supply_date);
         mPhotoButton = v.findViewById(R.id.supply_camera);
         mPhotoView = v.findViewById(R.id.supply_photo);
         mSaveFab = v.findViewById(R.id.save_supply_fab);
+
+        // Staff Action views
+        mStaffActionsCard = v.findViewById(R.id.card_staff_actions);
+        mRequestBorrowBtn = v.findViewById(R.id.btn_request_borrow);
+        mRequestConsumeBtn = v.findViewById(R.id.btn_request_consume);
+        mStockPricingCard = v.findViewById(R.id.card_stock_pricing);
+        mLogisticsCard = v.findViewById(R.id.card_logistics);
+        mAdvancedCard = v.findViewById(R.id.card_advanced);
 
         setupListeners();
         updateFields();
@@ -175,19 +207,23 @@ public class SupplyDetailFragment extends Fragment {
             mSaveFab.setVisibility(View.GONE);
             mPhotoButton.setVisibility(View.GONE);
             mBarcodeLayout.setEndIconVisible(false);
-            // Disable editing for staff
+            
+            // Hide sensitive/unnecessary info for staff
+            mStockPricingCard.setVisibility(View.GONE);
+            mLogisticsCard.setVisibility(View.GONE);
+            mAdvancedCard.setVisibility(View.GONE);
+            mDateButton.setVisibility(View.GONE);
+            
+            // Disable remaining visible fields
+            mProductIdField.setEnabled(false);
             mTitleField.setEnabled(false);
-            mBarcodeField.setEnabled(false);
-            mQuantityField.setEnabled(false);
             mCategoryDropdown.setEnabled(false);
-            mTypeDropdown.setEnabled(false);
-            mUnitDropdown.setEnabled(false);
-            mConditionDropdown.setEnabled(false);
-            mStatusDropdown.setEnabled(false);
-            mRoomDropdown.setEnabled(false);
             mDescriptionField.setEnabled(false);
-            mUnitIdentifiersField.setEnabled(false);
-            mDateButton.setEnabled(false);
+
+            // Show staff actions
+            mStaffActionsCard.setVisibility(View.VISIBLE);
+        } else {
+            mStaffActionsCard.setVisibility(View.GONE);
         }
 
         View rootLayout = v.findViewById(R.id.supply_detail_root);
@@ -199,80 +235,197 @@ public class SupplyDetailFragment extends Fragment {
     }
 
     private void setupListeners() {
+        mProductIdField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setPropertyTag(s)));
+        mTitleField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setName(s)));
+        mDescriptionField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setDescription(s)));
+        
+        mQuantityField.addTextChangedListener(createSimpleTextWatcher(s -> {
+            try { 
+                int val = Integer.parseInt(s);
+                mItem.setTotalQuantity(val);
+                mItem.setAvailableQuantity(val); // Simplification for demo
+                updateTotalValue();
+            } catch (Exception e) { }
+        }));
+        
+        mUnitPriceField.addTextChangedListener(createSimpleTextWatcher(s -> {
+            try {
+                double val = Double.parseDouble(s);
+                mItem.setUnitPrice(val);
+                updateTotalValue();
+            } catch (Exception e) { }
+        }));
+        
+        mReorderLevelField.addTextChangedListener(createSimpleTextWatcher(s -> {
+            try {
+                mItem.setReorderLevel(Integer.parseInt(s));
+            } catch (Exception e) { }
+        }));
+
+        mSupplierField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setSupplier(s)));
         mBarcodeField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setBarcode(s)));
+        mRemarksField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setRemarks(s)));
         
         mBarcodeLayout.setEndIconOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), ScannerActivity.class);
             startActivityForResult(intent, REQUEST_BARCODE_SCAN);
         });
 
-        mTitleField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setName(s)));
-
-        setupStaticDropdown(mTypeDropdown, new String[]{SupplyItem.TYPE_CONSUMABLE, SupplyItem.TYPE_BORROWABLE}, mItem.getItemType(), s -> mItem.setItemType(s));
-
-        mQuantityField.addTextChangedListener(createSimpleTextWatcher(s -> {
-            try { 
-                int val = Integer.parseInt(s);
-                if (mIsNewItem) {
-                    mItem.setTotalQuantity(val);
-                    mItem.setAvailableQuantity(val);
-                } else {
-                    int diff = val - mItem.getTotalQuantity();
-                    mItem.setTotalQuantity(val);
-                    mItem.setAvailableQuantity(Math.max(0, mItem.getAvailableQuantity() + diff));
-                }
-                updateStockDisplays();
-            } catch (Exception e) { }
-        }));
-
-        mUnitIdentifiersField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setUnitIdentifiers(s)));
-        mDescriptionField.addTextChangedListener(createSimpleTextWatcher(s -> mItem.setDescription(s)));
-
-        setupStaticDropdown(mConditionDropdown, new String[]{"New", "Good", "Damaged", "Old"}, mItem.getCondition(), s -> mItem.setCondition(s));
-        setupStaticDropdown(mStatusDropdown, new String[]{"Available", "Borrowed", "Used", "Out of Stock"}, mItem.getStatus(), s -> mItem.setStatus(s));
+        setupStaticDropdown(mStatusDropdown, new String[]{"Available", "Low Stock", "Out of Stock", "Damaged"}, mItem.getStatus(), s -> mItem.setStatus(s));
 
         mDateButton.setOnClickListener(view -> showDatePicker("Date Added", mItem.getDateAdded(), date -> {
             mItem.setDateAdded(date);
             updateDateButton();
         }));
 
+        mExpirationDateButton.setOnClickListener(v -> {
+            Date initial = mItem.getExpirationDate() != null ? mItem.getExpirationDate() : new Date();
+            showDatePicker("Expiration Date", initial, date -> {
+                mItem.setExpirationDate(date);
+                updateExpirationDateButton();
+            });
+        });
+
         mPhotoButton.setOnClickListener(v1 -> {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
-                    != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
-            } else {
-                launchCamera();
-            }
+            String[] options = {"Take Photo", "Choose from Gallery"};
+            new MaterialAlertDialogBuilder(requireContext())
+                    .setTitle("Add Photo")
+                    .setItems(options, (dialog, which) -> {
+                        if (which == 0) {
+                            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA)
+                                    != PackageManager.PERMISSION_GRANTED) {
+                                requestPermissions(new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
+                            } else {
+                                launchCamera();
+                            }
+                        } else {
+                            launchGallery();
+                        }
+                    })
+                    .show();
         });
 
         mSaveFab.setOnClickListener(view -> saveItem());
+
+        mRequestBorrowBtn.setOnClickListener(v -> showRequestDialog(SupplyRequest.TYPE_BORROW));
+        mRequestConsumeBtn.setOnClickListener(v -> showRequestDialog(SupplyRequest.TYPE_CONSUME));
+    }
+
+    private void showRequestDialog(String type) {
+        BottomSheetDialog dialog = new BottomSheetDialog(requireContext());
+        View view = getLayoutInflater().inflate(R.layout.dialog_request_item, null);
+        dialog.setContentView(view);
+
+        TextView title = view.findViewById(R.id.request_dialog_title);
+        title.setText(SupplyRequest.TYPE_BORROW.equals(type) ? "Request to Borrow" : "Request to Use");
+
+        TextInputEditText qtyEdit = view.findViewById(R.id.request_qty_edit);
+        TextInputEditText purposeEdit = view.findViewById(R.id.request_purpose_edit);
+        TextInputLayout returnDateLayout = view.findViewById(R.id.request_return_date_layout);
+        TextInputEditText returnDateEdit = view.findViewById(R.id.request_return_date_edit);
+        MaterialButton submitBtn = view.findViewById(R.id.btn_submit_request);
+
+        final Calendar expectedReturn = Calendar.getInstance();
+        expectedReturn.add(Calendar.DAY_OF_YEAR, 7);
+        
+        if (SupplyRequest.TYPE_BORROW.equals(type)) {
+            returnDateLayout.setVisibility(View.VISIBLE);
+            returnDateEdit.setText(new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(expectedReturn.getTime()));
+            returnDateEdit.setOnClickListener(v -> {
+                MaterialDatePicker<Long> picker = MaterialDatePicker.Builder.datePicker()
+                        .setSelection(expectedReturn.getTimeInMillis())
+                        .build();
+                picker.addOnPositiveButtonClickListener(selection -> {
+                    expectedReturn.setTimeInMillis(selection);
+                    returnDateEdit.setText(new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(expectedReturn.getTime()));
+                });
+                picker.show(getParentFragmentManager(), "DATE_PICKER");
+            });
+        } else {
+            returnDateLayout.setVisibility(View.GONE);
+        }
+
+        submitBtn.setOnClickListener(v -> {
+            String qtyStr = qtyEdit.getText().toString().trim();
+            String purpose = purposeEdit.getText().toString().trim();
+
+            if (qtyStr.isEmpty() || purpose.isEmpty()) {
+                Toast.makeText(getActivity(), "Please fill in all fields", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            int qty = Integer.parseInt(qtyStr);
+            if (qty <= 0 || qty > mItem.getAvailableQuantity()) {
+                Toast.makeText(getActivity(), "Invalid quantity. Max available: " + mItem.getAvailableQuantity(), Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            SupplyRequest request = new SupplyRequest();
+            request.setItemId(mItem.getId());
+            request.setItemTitle(mItem.getName());
+            request.setRequesterName(SupplyLab.get(getActivity()).getCurrentUser());
+            request.setQuantity(qty);
+            request.setRequestType(type);
+            request.setPurpose(purpose);
+            if (SupplyRequest.TYPE_BORROW.equals(type)) {
+                request.setExpectedReturnDate(expectedReturn.getTime());
+            }
+
+            SupplyLab.get(getActivity()).submitSupplyRequestAsync(request, success -> {
+                if (success) {
+                    Toast.makeText(getActivity(), "Request submitted successfully", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    getActivity().finish();
+                } else {
+                    Toast.makeText(getActivity(), "Failed to submit request", Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+
+        dialog.show();
     }
 
     private void updateFields() {
         if (mItem == null) return;
         
-        mBarcodeField.setText(mItem.getBarcode());
+        mProductIdField.setText(mItem.getPropertyTag());
         mTitleField.setText(mItem.getName());
-        mQuantityField.setText(String.valueOf(mItem.getTotalQuantity()));
-        mUnitIdentifiersField.setText(mItem.getUnitIdentifiers());
         mDescriptionField.setText(mItem.getDescription());
         
-        mTypeDropdown.setText(mItem.getItemType(), false);
-        mConditionDropdown.setText(mItem.getCondition(), false);
+        mQuantityField.setText(String.valueOf(mItem.getTotalQuantity()));
+        mUnitPriceField.setText(String.valueOf(mItem.getUnitPrice()));
+        mReorderLevelField.setText(String.valueOf(mItem.getReorderLevel()));
+        
+        mSupplierField.setText(mItem.getSupplier());
+        mBarcodeField.setText(mItem.getBarcode());
+        mRemarksField.setText(mItem.getRemarks());
+        
         mStatusDropdown.setText(mItem.getStatus(), false);
         
         updateCategoryList();
         updateUnitList();
         updateRoomList();
-        updateStockDisplays();
         updateDateButton();
+        updateExpirationDateButton();
         updatePhotoView();
+        updateTotalValue();
+
+        if (!mIsAdmin) {
+            if (SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(mItem.getItemType())) {
+                mRequestBorrowBtn.setVisibility(View.VISIBLE);
+                mRequestConsumeBtn.setVisibility(View.GONE);
+            } else {
+                mRequestBorrowBtn.setVisibility(View.GONE);
+                mRequestConsumeBtn.setVisibility(View.VISIBLE);
+            }
+        }
     }
 
-    private void updateStockDisplays() {
-        mAvailableStockText.setText("Available: " + mItem.getAvailableQuantity());
-        mBorrowedStockText.setText("Borrowed: " + mItem.getBorrowedQuantity());
-        mUsedStockText.setText("Used: " + mItem.getUsedQuantity());
+    private void updateTotalValue() {
+        if (mTotalValueField != null) {
+            double total = mItem.getTotalQuantity() * mItem.getUnitPrice();
+            mTotalValueField.setText(String.format(Locale.getDefault(), "%.2f", total));
+        }
     }
 
     private void setupStaticDropdown(MaterialAutoCompleteTextView dropdown, String[] options, String currentSelection, java.util.function.Consumer<String> callback) {
@@ -306,24 +459,27 @@ public class SupplyDetailFragment extends Fragment {
 
     private void launchCamera() {
         final Intent captureImage = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        PackageManager packageManager = getActivity().getPackageManager();
-        if (captureImage.resolveActivity(packageManager) == null) {
-            Toast.makeText(getActivity(), "No camera app found", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
         Uri uri = FileProvider.getUriForFile(getActivity(),
                 "com.example.schoolsupplyinventory.fileprovider", mPhotoFile);
         captureImage.putExtra(MediaStore.EXTRA_OUTPUT, uri);
         captureImage.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-
-        List<ResolveInfo> cameraActivities = packageManager
-                .queryIntentActivities(captureImage, PackageManager.MATCH_DEFAULT_ONLY);
-        for (ResolveInfo activity : cameraActivities) {
-            getActivity().grantUriPermission(activity.activityInfo.packageName,
-                    uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-        }
         startActivityForResult(captureImage, REQUEST_PHOTO);
+    }
+
+    private void launchGallery() {
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(intent, REQUEST_GALLERY);
+    }
+
+    private void copyUriToFile(Uri uri, File destFile) throws IOException {
+        try (InputStream in = getActivity().getContentResolver().openInputStream(uri);
+             OutputStream out = new FileOutputStream(destFile)) {
+            byte[] buf = new byte[1024];
+            int len;
+            while ((len = in.read(buf)) > 0) {
+                out.write(buf, 0, len);
+            }
+        }
     }
 
     private void updateCategoryList() {
@@ -409,19 +565,7 @@ public class SupplyDetailFragment extends Fragment {
     @Override
     public void onPrepareOptionsMenu(@NonNull Menu menu) {
         super.onPrepareOptionsMenu(menu);
-        MenuItem borrow = menu.findItem(R.id.action_borrow);
-        MenuItem use = menu.findItem(R.id.action_use);
-        MenuItem request = menu.findItem(R.id.action_request);
         MenuItem delete = menu.findItem(R.id.delete_supply);
-        if (borrow != null) {
-            borrow.setVisible(mIsAdmin && !mIsNewItem);
-        }
-        if (use != null) {
-            use.setVisible(mIsAdmin && !mIsNewItem);
-        }
-        if (request != null) {
-            request.setVisible(!mIsAdmin && !mIsNewItem);
-        }
         if (delete != null) {
             delete.setVisible(mIsAdmin && !mIsNewItem);
         }
@@ -431,205 +575,13 @@ public class SupplyDetailFragment extends Fragment {
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragment_supply_detail, menu);
-        MenuItem deleteItem = menu.findItem(R.id.delete_supply);
-        if (deleteItem != null) {
-            deleteItem.setVisible(mIsAdmin && !mIsNewItem);
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        requireActivity().invalidateOptionsMenu();
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.delete_supply) { confirmDelete(); return true; }
-        if (id == R.id.action_request) { showStaffRequestDialog(); return true; }
-        if (id == R.id.action_borrow) { showBorrowDialog(); return true; }
-        if (id == R.id.action_use) { showUseDialog(); return true; }
-        if (id == R.id.action_history) { showHistoryDialog(); return true; }
         return super.onOptionsItemSelected(item);
-    }
-
-    private void showStaffRequestDialog() {
-        if (mItem == null || mIsNewItem || getActivity() == null) {
-            return;
-        }
-
-        View dlgView = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_staff_request, null);
-        TextView typeLabel = dlgView.findViewById(R.id.staff_request_type_label);
-        TextInputEditText qtyEdit = dlgView.findViewById(R.id.staff_request_quantity);
-        TextInputEditText purposeEdit = dlgView.findViewById(R.id.staff_request_purpose);
-        TextInputLayout unitLayout = dlgView.findViewById(R.id.staff_request_unit_layout);
-        TextInputEditText unitEdit = dlgView.findViewById(R.id.staff_request_unit_id);
-        MaterialButton dueBtn = dlgView.findViewById(R.id.staff_request_due_date_btn);
-
-        final boolean borrow = SupplyItem.TYPE_BORROWABLE.equalsIgnoreCase(mItem.getItemType());
-        final Calendar[] dueHolder = new Calendar[]{Calendar.getInstance()};
-        dueHolder[0].add(Calendar.DAY_OF_YEAR, 7);
-        SimpleDateFormat fmt = new SimpleDateFormat("MMM d, yyyy", Locale.getDefault());
-
-        if (borrow) {
-            typeLabel.setText("Borrow request (returnable item)");
-            dueBtn.setVisibility(View.VISIBLE);
-            dueBtn.setText("Return by: " + fmt.format(dueHolder[0].getTime()));
-            dueBtn.setOnClickListener(v -> {
-                MaterialDatePicker<Long> picker = MaterialDatePicker.Builder.datePicker()
-                        .setTitleText("Expected return date")
-                        .setSelection(dueHolder[0].getTimeInMillis())
-                        .build();
-                picker.addOnPositiveButtonClickListener(sel -> {
-                    dueHolder[0].setTimeInMillis(sel);
-                    dueBtn.setText("Return by: " + fmt.format(dueHolder[0].getTime()));
-                });
-                picker.show(getParentFragmentManager(), "STAFF_RETURN_DATE");
-            });
-            if (!mItem.getUnitIdentifiersList().isEmpty()) {
-                unitLayout.setVisibility(View.VISIBLE);
-            }
-        } else {
-            typeLabel.setText("Consume request (consumable item)");
-        }
-        qtyEdit.setText("1");
-
-        AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Submit request")
-                .setView(dlgView)
-                .setPositiveButton("Submit", null)
-                .setNegativeButton("Cancel", null)
-                .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String qtyStr = qtyEdit.getText() != null ? qtyEdit.getText().toString().trim() : "";
-            String purpose = purposeEdit.getText() != null ? purposeEdit.getText().toString().trim() : "";
-            if (qtyStr.isEmpty() || purpose.isEmpty()) {
-                Toast.makeText(getActivity(), "Enter quantity and purpose", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            int qty;
-            try {
-                qty = Integer.parseInt(qtyStr);
-            } catch (NumberFormatException ex) {
-                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            if (qty <= 0 || qty > mItem.getAvailableQuantity()) {
-                Toast.makeText(getActivity(), "Invalid quantity", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            SupplyRequest req = new SupplyRequest();
-            req.setItemId(mItem.getId());
-            req.setItemTitle(mItem.getName());
-            req.setRequesterName(SupplyLab.get(requireContext()).getCurrentUser());
-            req.setQuantity(qty);
-            req.setPurpose(purpose);
-            if (borrow) {
-                req.setRequestType(SupplyRequest.TYPE_BORROW);
-                req.setExpectedReturnDate(dueHolder[0].getTime());
-                String uid = unitEdit.getText() != null ? unitEdit.getText().toString().trim() : "";
-                if (!uid.isEmpty()) {
-                    req.setUnitId(uid);
-                }
-            } else {
-                req.setRequestType(SupplyRequest.TYPE_CONSUME);
-            }
-            SupplyLab.get(requireContext()).submitSupplyRequestAsync(req, ok -> {
-                Activity act = getActivity();
-                if (act == null) {
-                    return;
-                }
-                act.runOnUiThread(() -> {
-                    if (ok) {
-                        Toast.makeText(act, "Request submitted (pending approval)", Toast.LENGTH_SHORT).show();
-                        dialog.dismiss();
-                    } else {
-                        Toast.makeText(act, "Could not submit (check item type and stock)", Toast.LENGTH_SHORT).show();
-                    }
-                });
-            });
-        }));
-        dialog.show();
-    }
-
-    private void showBorrowDialog() {
-        View v = LayoutInflater.from(getActivity()).inflate(R.layout.dialog_borrow, null);
-        TextInputEditText borrowerField = v.findViewById(R.id.borrower_name);
-        TextInputEditText qtyField = v.findViewById(R.id.borrow_quantity);
-        TextInputEditText unitIdField = v.findViewById(R.id.borrow_unit_id);
-        
-        new MaterialAlertDialogBuilder(getActivity())
-                .setTitle("Borrow Item")
-                .setView(v)
-                .setPositiveButton("Borrow", (d, w) -> {
-                    String name = borrowerField.getText().toString();
-                    String qtyStr = qtyField.getText().toString();
-                    String unitId = unitIdField.getText().toString();
-                    if (name.isEmpty() || qtyStr.isEmpty()) return;
-                    int qty = Integer.parseInt(qtyStr);
-                    SupplyLab.get(getActivity()).borrowItemAsync(mItem.getId(), name, qty, System.currentTimeMillis(), System.currentTimeMillis() + 604800000L, unitId, success -> {
-                        if (success) {
-                            Toast.makeText(getActivity(), "Item borrowed", Toast.LENGTH_SHORT).show();
-                            loadItemAsync(mItem.getId());
-                        } else {
-                            Toast.makeText(getActivity(), "Failed to borrow (insufficient stock)", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void showUseDialog() {
-        final TextInputEditText input = new TextInputEditText(getActivity());
-        input.setHint("Quantity to consume");
-        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
-        new MaterialAlertDialogBuilder(getActivity())
-                .setTitle("Consume Item")
-                .setView(input)
-                .setPositiveButton("Use", (d, w) -> {
-                    String qtyStr = input.getText().toString();
-                    if (qtyStr.isEmpty()) return;
-                    int qty = Integer.parseInt(qtyStr);
-                    SupplyLab.get(getActivity()).useConsumableAsync(mItem.getId(), qty, success -> {
-                        if (success) {
-                            Toast.makeText(getActivity(), "Quantity updated", Toast.LENGTH_SHORT).show();
-                            loadItemAsync(mItem.getId());
-                        } else {
-                            Toast.makeText(getActivity(), "Failed to consume (insufficient stock)", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    private void showHistoryDialog() {
-        SupplyLab.get(getActivity()).getAllHistoryAsync(records -> {
-            List<HistoryRecord> itemRecords = new ArrayList<>();
-            for (HistoryRecord r : records) {
-                if (r.getItemId().equals(mItem.getId())) itemRecords.add(r);
-            }
-            
-            if (itemRecords.isEmpty()) {
-                Toast.makeText(getActivity(), "No history found for this item", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String[] historyItems = new String[itemRecords.size()];
-            SimpleDateFormat fmt = new SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault());
-            for (int i = 0; i < itemRecords.size(); i++) {
-                HistoryRecord r = itemRecords.get(i);
-                historyItems[i] = fmt.format(r.getTimestamp()) + ": " + r.getAction() + " - " + r.getDetails();
-            }
-
-            new MaterialAlertDialogBuilder(getActivity())
-                    .setTitle("Item History")
-                    .setItems(historyItems, null)
-                    .setPositiveButton("OK", null)
-                    .show();
-        });
     }
 
     private void saveItem() {
@@ -674,6 +626,15 @@ public class SupplyDetailFragment extends Fragment {
         mDateButton.setText("Date Added: " + dateFormat.format(mItem.getDateAdded()));
     }
 
+    private void updateExpirationDateButton() {
+        if (mItem.getExpirationDate() != null) {
+            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+            mExpirationDateButton.setText("Expires: " + dateFormat.format(mItem.getExpirationDate()));
+        } else {
+            mExpirationDateButton.setText("No Expiration Date");
+        }
+    }
+
     private void updatePhotoView() {
         if (mPhotoFile == null || !mPhotoFile.exists()) {
             mPhotoView.setImageDrawable(null);
@@ -687,10 +648,15 @@ public class SupplyDetailFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode != Activity.RESULT_OK) return;
         if (requestCode == REQUEST_PHOTO) {
-            Uri uri = FileProvider.getUriForFile(getActivity(),
-                    "com.example.schoolsupplyinventory.fileprovider", mPhotoFile);
-            getActivity().revokeUriPermission(uri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             updatePhotoView();
+        } else if (requestCode == REQUEST_GALLERY && data != null) {
+            Uri selectedImage = data.getData();
+            try {
+                copyUriToFile(selectedImage, mPhotoFile);
+                updatePhotoView();
+            } catch (IOException e) {
+                Toast.makeText(getActivity(), "Failed to copy image", Toast.LENGTH_SHORT).show();
+            }
         } else if (requestCode == REQUEST_BARCODE_SCAN && data != null) {
             String barcode = data.getStringExtra("SCANNED_BARCODE");
             mBarcodeField.setText(barcode);

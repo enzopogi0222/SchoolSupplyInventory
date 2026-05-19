@@ -15,7 +15,7 @@ import com.example.schoolsupplyinventory.database.SupplyDbSchema.UnitTable;
 import com.example.schoolsupplyinventory.database.SupplyDbSchema.UserTable;
 
 public class SupplyBaseHelper extends SQLiteOpenHelper {
-    private static final int VERSION = 21;
+    private static final int VERSION = 22;
     private static final String DATABASE_NAME = "supplyBase.db";
 
     public SupplyBaseHelper(Context context) {
@@ -40,6 +40,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.BORROWED_QUANTITY + " integer, " +
                 SupplyTable.Cols.USED_QUANTITY + " integer, " +
                 SupplyTable.Cols.UNIT + ", " +
+                SupplyTable.Cols.UNIT_PRICE + " real, " +
+                SupplyTable.Cols.REORDER_LEVEL + " integer, " +
                 SupplyTable.Cols.LOCATION + ", " +
                 SupplyTable.Cols.BARCODE + ", " +
                 SupplyTable.Cols.PROPERTY_TAG + ", " +
@@ -47,7 +49,8 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
                 SupplyTable.Cols.DESCRIPTION + ", " +
                 SupplyTable.Cols.CONDITION + ", " +
                 SupplyTable.Cols.STATUS + ", " +
-                SupplyTable.Cols.UNIT_IDENTIFIERS + ")"
+                SupplyTable.Cols.UNIT_IDENTIFIERS + ", " +
+                SupplyTable.Cols.REMARKS + ")"
         );
 
         db.execSQL("create table " + UserTable.NAME + "(" +
@@ -187,6 +190,11 @@ public class SupplyBaseHelper extends SQLiteOpenHelper {
         }
         if (oldVersion < 21) {
             db.execSQL("alter table " + RequestTable.NAME + " add column " + RequestTable.Cols.BORROW_RECORD_ID + " text");
+        }
+        if (oldVersion < 22) {
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.UNIT_PRICE + " real default 0.0");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.REORDER_LEVEL + " integer default 0");
+            db.execSQL("alter table " + SupplyTable.NAME + " add column " + SupplyTable.Cols.REMARKS + " text");
         }
     }
 }

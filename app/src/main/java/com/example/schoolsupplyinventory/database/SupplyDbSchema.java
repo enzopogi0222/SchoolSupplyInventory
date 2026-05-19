@@ -13,20 +13,23 @@ public class SupplyDbSchema {
             public static final String CATEGORY = "category";
             public static final String TYPE = "item_type"; // Consumable or Borrowable
             public static final String SUPPLIER = "supplier";
-            public static final String ROOM = "room";
+            public static final String ROOM = "room"; // Location / Storage Area
             public static final String TOTAL_QUANTITY = "total_quantity";
             public static final String AVAILABLE_QUANTITY = "available_quantity";
             public static final String BORROWED_QUANTITY = "borrowed_quantity";
             public static final String USED_QUANTITY = "used_quantity";
             public static final String UNIT = "unit";
+            public static final String UNIT_PRICE = "unit_price";
+            public static final String REORDER_LEVEL = "reorder_level";
             public static final String LOCATION = "location";
             public static final String BARCODE = "barcode";
-            public static final String PROPERTY_TAG = "property_tag";
+            public static final String PROPERTY_TAG = "property_tag"; // Item ID / Product ID
             public static final String DESCRIPTION = "description";
             public static final String CONDITION = "condition";
             public static final String STATUS = "status";
             public static final String IS_BORROWABLE = "is_borrowable";
-            public static final String UNIT_IDENTIFIERS = "unit_identifiers"; // New: stores unique IDs for each piece
+            public static final String UNIT_IDENTIFIERS = "unit_identifiers";
+            public static final String REMARKS = "remarks";
             
             // For backward compatibility during migration
             public static final String BORROWED = "borrowed";
@@ -60,7 +63,7 @@ public class SupplyDbSchema {
             public static final String EXPECTED_RETURN_DATE = "expected_return_date";
             public static final String ACTUAL_RETURN_DATE = "actual_return_date";
             public static final String STATUS = "status";
-            public static final String UNIT_ID = "unit_id"; // New: stores the unique ID of the borrowed piece
+            public static final String UNIT_ID = "unit_id";
         }
     }
 

@@ -9,7 +9,12 @@ import android.widget.ArrayAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -24,6 +29,7 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class DashboardFragment extends Fragment {
@@ -33,11 +39,14 @@ public class DashboardFragment extends Fragment {
     private static final String ACTION_REQUEST_APPROVED = "REQUEST_APPROVED";
     private static final String ACTION_REQUEST_REJECTED = "REQUEST_REJECTED";
 
-    private TextView mTotalCountText, mConsumableCountText, mBorrowableCountText, mBorrowedCountText, mLowStockCountText, mUserNameText;
+    private TextView mTotalCountText, mConsumableCountText, mBorrowableCountText, mBorrowedCountText, mLowStockCountText;
+    private TextView mGreetingText, mUserNameText, mUserRoleText;
     private TextView mActivitySectionTitle;
-    private ViewGroup mRecentActivityContainer;
+    private RecyclerView mRecentActivityRecycler;
+    private HistoryAdapter mHistoryAdapter;
     private View mAddItemCard;
     private MaterialButton mReportsButton;
+    private MaterialButton mClearActivityButton;
 
     private Calendar mExpectedReturnDate = Calendar.getInstance();
     private SupplyItem mSelectedBorrowItem, mSelectedConsumableItem;
@@ -59,10 +68,21 @@ public class DashboardFragment extends Fragment {
         mBorrowableCountText = v.findViewById(R.id.dashboard_borrowable_count);
         mBorrowedCountText = v.findViewById(R.id.dashboard_borrowed_count);
         mLowStockCountText = v.findViewById(R.id.dashboard_low_stock_count);
+        
+        mGreetingText = v.findViewById(R.id.dashboard_greeting);
         mUserNameText = v.findViewById(R.id.dashboard_user_name);
+        mUserRoleText = v.findViewById(R.id.dashboard_user_role);
+        
         mActivitySectionTitle = v.findViewById(R.id.dashboard_activity_section_title);
         mActivitySectionTitle.setText(mIsAdmin ? "Recent Inventory Activity" : "Request history");
-        mRecentActivityContainer = v.findViewById(R.id.recent_activity_container);
+        
+        mRecentActivityRecycler = v.findViewById(R.id.recent_activity_recycler);
+        mRecentActivityRecycler.setLayoutManager(new LinearLayoutManager(requireContext()));
+        mHistoryAdapter = new HistoryAdapter(new ArrayList<>());
+        mRecentActivityRecycler.setAdapter(mHistoryAdapter);
+
+        mClearActivityButton = v.findViewById(R.id.dashboard_clear_activity);
+        mClearActivityButton.setVisibility(View.VISIBLE);
 
         mAddItemCard = v.findViewById(R.id.dashboard_add_item);
         mReportsButton = v.findViewById(R.id.dashboard_reports);
@@ -73,17 +93,11 @@ public class DashboardFragment extends Fragment {
         View myRequestsCard = v.findViewById(R.id.dashboard_my_requests);
         View pendingRequestsCard = v.findViewById(R.id.dashboard_pending_requests);
 
-        // Reflect Role in Header
-        if (mIsAdmin) {
-            mUserNameText.setText("System Admin");
-        } else {
-            mUserNameText.setText(SupplyLab.get(getActivity()).getCurrentUser());
-        }
+        // Formal Header Content
+        setupFormalHeader();
 
-        // Action: View Inventory (Available for both)
         v.findViewById(R.id.dashboard_view_inventory).setOnClickListener(view -> loadFragment(new SupplyListFragment()));
         
-        // Return is available for both roles (Staff requests, Admin issues)
         returnCard.setVisibility(View.VISIBLE);
 
         if (mIsAdmin) {
@@ -120,10 +134,79 @@ public class DashboardFragment extends Fragment {
             startActivity(new Intent(getActivity(), LoginActivity.class).setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         });
 
+        mClearActivityButton.setOnClickListener(v1 -> {
+            String message = mIsAdmin ? "Are you sure you want to clear all inventory activity history?" : "Are you sure you want to clear your request history?";
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Clear Activity History")
+                    .setMessage(message)
+                    .setPositiveButton("Clear", (dialog, which) -> {
+                        SupplyLab lab = SupplyLab.get(getActivity());
+                        if (mIsAdmin) {
+                            lab.clearHistoryAsync(result -> {
+                                loadRecentActivity();
+                                Toast.makeText(getActivity(), "All activity history cleared", Toast.LENGTH_SHORT).show();
+                            });
+                        } else {
+                            lab.clearHistoryForUserAsync(lab.getCurrentUser(), result -> {
+                                loadRecentActivity();
+                                Toast.makeText(getActivity(), "Your history cleared", Toast.LENGTH_SHORT).show();
+                            });
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
+
+        setupSwipeToDelete();
         updateStats();
         loadRecentActivity();
 
         return v;
+    }
+
+    private void setupFormalHeader() {
+        Calendar cal = Calendar.getInstance();
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        String greeting;
+        if (hour < 12) greeting = "Good morning,";
+        else if (hour < 17) greeting = "Good afternoon,";
+        else greeting = "Good evening,";
+        
+        mGreetingText.setText(greeting);
+
+        if (mIsAdmin) {
+            mUserNameText.setText("Administrator");
+            mUserRoleText.setText("System & Inventory Control");
+        } else {
+            String email = SupplyLab.get(getActivity()).getCurrentUser();
+            // Extracted name from email formally
+            if (email.startsWith("jerica")) {
+                mUserNameText.setText("Jerica");
+            } else {
+                mUserNameText.setText("Staff Member");
+            }
+            mUserRoleText.setText("Inventory Logistics Personnel");
+        }
+    }
+
+    private void setupSwipeToDelete() {
+        ItemTouchHelper.SimpleCallback swipeCallback = new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+            @Override
+            public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+                return false;
+            }
+
+            @Override
+            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+                int position = viewHolder.getAdapterPosition();
+                HistoryRecord record = mHistoryAdapter.getRecords().get(position);
+                SupplyLab.get(getActivity()).deleteHistoryRecordAsync(record.getId(), result -> {
+                    mHistoryAdapter.getRecords().remove(position);
+                    mHistoryAdapter.notifyItemRemoved(position);
+                });
+            }
+        };
+        new ItemTouchHelper(swipeCallback).attachToRecyclerView(mRecentActivityRecycler);
     }
 
     private void loadFragment(Fragment fragment) {
@@ -429,37 +512,26 @@ public class DashboardFragment extends Fragment {
     }
 
     private void loadRecentActivity() {
-        mRecentActivityContainer.removeAllViews();
         SupplyLab.get(getActivity()).getAllHistoryAsync(records -> {
             if (!isAdded()) return;
             List<HistoryRecord> toShow;
             if (mIsAdmin) {
                 toShow = new ArrayList<>();
-                for (int i = 0; i < records.size() && i < 5; i++) {
+                for (int i = 0; i < records.size() && i < 20; i++) {
                     toShow.add(records.get(i));
                 }
             } else {
                 String me = SupplyLab.get(requireContext()).getCurrentUser();
                 toShow = records.stream()
                         .filter(r -> isStaffRequestHistoryEntry(r, me))
-                        .limit(12)
+                        .limit(20)
                         .collect(Collectors.toList());
             }
-            LayoutInflater inflater = LayoutInflater.from(requireContext());
-            SimpleDateFormat fmt = new SimpleDateFormat("MMM dd", Locale.getDefault());
-            for (HistoryRecord record : toShow) {
-                View activityView = inflater.inflate(R.layout.list_item_activity, mRecentActivityContainer, false);
-                ((TextView) activityView.findViewById(R.id.activity_title)).setText(formatActivityTitle(record));
-                ((TextView) activityView.findViewById(R.id.activity_subtitle)).setText(record.getDetails());
-                ((TextView) activityView.findViewById(R.id.activity_time)).setText(fmt.format(record.getTimestamp()));
-                mRecentActivityContainer.addView(activityView);
-            }
+            mHistoryAdapter.setRecords(toShow);
+            mHistoryAdapter.notifyDataSetChanged();
         });
     }
 
-    /**
-     * Staff dashboard: only request workflow (their submissions + admin approve/reject on their requests).
-     */
     private static boolean isStaffRequestHistoryEntry(HistoryRecord r, String staffEmail) {
         if (r.getAction() == null || staffEmail == null || staffEmail.isEmpty()) {
             return false;
@@ -497,6 +569,38 @@ public class DashboardFragment extends Fragment {
 
     private void updateDateButtonText(MaterialButton button) {
         button.setText("Due Date: " + new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(mExpectedReturnDate.getTime()));
+    }
+
+    private class HistoryHolder extends RecyclerView.ViewHolder {
+        private TextView title, subtitle, time;
+        private HistoryRecord record;
+
+        public HistoryHolder(View v) {
+            super(v);
+            title = v.findViewById(R.id.activity_title);
+            subtitle = v.findViewById(R.id.activity_subtitle);
+            time = v.findViewById(R.id.activity_time);
+        }
+
+        public void bind(HistoryRecord r) {
+            record = r;
+            title.setText(formatActivityTitle(record));
+            subtitle.setText(record.getDetails());
+            SimpleDateFormat fmt = new SimpleDateFormat("MMM dd", Locale.getDefault());
+            time.setText(fmt.format(record.getTimestamp()));
+        }
+    }
+
+    private class HistoryAdapter extends RecyclerView.Adapter<HistoryHolder> {
+        private List<HistoryRecord> records;
+        public HistoryAdapter(List<HistoryRecord> records) { this.records = records; }
+        @NonNull @Override public HistoryHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            return new HistoryHolder(LayoutInflater.from(requireContext()).inflate(R.layout.list_item_activity, parent, false));
+        }
+        @Override public void onBindViewHolder(@NonNull HistoryHolder holder, int position) { holder.bind(records.get(position)); }
+        @Override public int getItemCount() { return records.size(); }
+        public void setRecords(List<HistoryRecord> records) { this.records = records; }
+        public List<HistoryRecord> getRecords() { return records; }
     }
 
     @Override
